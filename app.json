@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "Biohead",
+    "slug": "biohead",
+    "version": "1.0.0",
+    "description": "Pusteøvelser for ro, fokus og energi. Din daglige mindfulness-kompanjong.",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "biohead",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#020508"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "no.biohead.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#020508"
+      },
+      "package": "no.biohead.app"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
