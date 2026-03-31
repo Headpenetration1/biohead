@@ -1,6 +1,6 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet, Image } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useMemo } from 'react';
+import { View, Text, ScrollView, StyleSheet, Image, Pressable } from 'react-native';
+import { useRouter, Redirect, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   FadeIn,
@@ -10,7 +10,7 @@ import Animated, {
   withRepeat,
   withSequence,
   withTiming,
-  Easing
+  Easing,
 } from 'react-native-reanimated';
 import { Colors } from '@/constants/colors';
 import { Typography } from '@/constants/typography';
@@ -22,13 +22,17 @@ import StreakBadge from '@/components/StreakBadge';
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { state } = useAppContext();
+  const { state, toggleFavorite } = useAppContext();
 
-  // Animated background orbs
   const orb1TranslateY = useSharedValue(0);
   const orb2TranslateX = useSharedValue(0);
 
   React.useEffect(() => {
+    if (state.reduceMotion) {
+      orb1TranslateY.value = 0;
+      orb2TranslateX.value = 0;
+      return;
+    }
     orb1TranslateY.value = withRepeat(
       withSequence(
         withTiming(-40, { duration: 6000, easing: Easing.inOut(Easing.ease) }),
@@ -45,7 +49,7 @@ export default function HomeScreen() {
       -1,
       true
     );
-  }, []);
+  }, [state.reduceMotion, orb1TranslateY, orb2TranslateX]);
 
   const orb1Style = useAnimatedStyle(() => ({
     transform: [{ translateY: orb1TranslateY.value }],
@@ -55,9 +59,27 @@ export default function HomeScreen() {
     transform: [{ translateX: orb2TranslateX.value }],
   }));
 
+  const sortedExercises = useMemo(() => {
+    const goal = state.userGoal;
+    if (!goal) return exercises;
+    const match = exercises.find((e) => e.id === goal);
+    if (!match) return exercises;
+    const rest = exercises.filter((e) => e.id !== goal);
+    return [match, ...rest];
+  }, [state.userGoal]);
+
+  const favoriteSet = useMemo(() => new Set(state.favorites), [state.favorites]);
+
+  if (state.isLoading) {
+    return <View style={[styles.container, styles.loading]} />;
+  }
+
+  if (!state.hasCompletedOnboarding) {
+    return <Redirect href={'/onboarding' as Href} />;
+  }
+
   return (
     <View style={styles.container}>
-      {/* Animated Ambient Background Orbs */}
       <Animated.View style={[styles.ambientGlow, styles.glow1, orb1Style]} />
       <Animated.View style={[styles.ambientGlow, styles.glow2, orb2Style]} />
 
@@ -69,16 +91,26 @@ export default function HomeScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <Animated.View
-          entering={FadeIn.duration(500)}
-          style={styles.header}
-        >
-          <View style={{ width: 40 }} />
+        <Animated.View entering={FadeIn.duration(500)} style={styles.header}>
+          <Pressable
+            onPress={() => router.push('/settings' as Href)}
+            style={styles.headerIconBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Innstillinger"
+          >
+            <Text style={styles.headerIcon}>⚙</Text>
+          </Pressable>
           <StreakBadge count={state.currentStreak} />
+          <Pressable
+            onPress={() => router.push('/history' as Href)}
+            style={styles.headerIconBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Historikk"
+          >
+            <Text style={styles.headerIcon}>◇</Text>
+          </Pressable>
         </Animated.View>
 
-        {/* Logo */}
         <Animated.View
           entering={FadeInDown.delay(100).duration(600).springify()}
           style={styles.logoContainer}
@@ -90,21 +122,33 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
-        {/* Greeting */}
         <Animated.View
           entering={FadeInDown.delay(150).duration(500).springify()}
           style={styles.greetingContainer}
         >
-          <Text style={styles.greeting}>Hva trenger du nå?</Text>
+          {state.userGoal ? (
+            <>
+              <Text style={styles.greetingHint}>Anbefalt for deg</Text>
+              <Text style={styles.greeting}>
+                {state.userGoal === 'calm' && 'Finn roen'}
+                {state.userGoal === 'focus' && 'Skjerper fokus'}
+                {state.userGoal === 'energy' && 'Lad opp'}
+              </Text>
+            </>
+          ) : (
+            <Text style={styles.greeting}>Hva trenger du nå?</Text>
+          )}
         </Animated.View>
 
-        {/* Exercise cards */}
         <View style={styles.cardsContainer}>
-          {exercises.map((ex, i) => (
+          {sortedExercises.map((ex, i) => (
             <ExerciseCard
               key={ex.id}
               exercise={ex}
               index={i}
+              isFavorite={favoriteSet.has(ex.id)}
+              hapticsEnabled={state.hapticsEnabled}
+              onToggleFavorite={() => toggleFavorite(ex.id)}
               onPress={() =>
                 router.push({
                   pathname: '/exercise/[id]',
@@ -115,12 +159,12 @@ export default function HomeScreen() {
           ))}
         </View>
 
-        {/* Session counter */}
         {state.sessions.length > 0 && (
           <Animated.View entering={FadeIn.delay(600).duration(800)} style={styles.counterContainer}>
             <View style={styles.counterPill}>
               <Text style={styles.counterText}>
                 {state.sessions.length} økt{state.sessions.length !== 1 ? 'er' : ''} fullført
+                {state.longestStreak > 0 ? ` · rekord ${state.longestStreak} dager` : ''}
               </Text>
             </View>
           </Animated.View>
@@ -135,6 +179,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.darkBase,
   },
+  loading: {
+    flex: 1,
+  },
   content: {
     paddingHorizontal: 24,
   },
@@ -143,7 +190,7 @@ const styles = StyleSheet.create({
     width: 400,
     height: 400,
     borderRadius: 200,
-    opacity: 0.12, // Vibrant but subtle blur
+    opacity: 0.12,
   },
   glow1: {
     top: -150,
@@ -165,6 +212,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 8,
   },
+  headerIconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  headerIcon: {
+    fontSize: 20,
+    color: Colors.textSecondary,
+  },
   logoContainer: {
     alignItems: 'center',
     paddingVertical: 28,
@@ -181,7 +242,7 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
   },
   logoBio: {
-    fontFamily: Typography.fontFamily.medium, // Thinner looks more premium
+    fontFamily: Typography.fontFamily.medium,
     fontSize: 42,
     color: Colors.textPrimary,
     letterSpacing: -2,
@@ -189,12 +250,20 @@ const styles = StyleSheet.create({
   logoHead: {
     fontFamily: Typography.fontFamily.bold,
     fontSize: 42,
-    color: Colors.greenAccent, // Neon cyan
+    color: Colors.greenAccent,
     letterSpacing: -2,
   },
   greetingContainer: {
     alignItems: 'center',
     marginBottom: 40,
+  },
+  greetingHint: {
+    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.sizes.xs,
+    color: Colors.greenAccent,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    marginBottom: 6,
   },
   greeting: {
     fontFamily: Typography.fontFamily.medium,
@@ -223,5 +292,6 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     letterSpacing: 1,
     textTransform: 'uppercase',
+    textAlign: 'center',
   },
 });

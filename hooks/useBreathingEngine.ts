@@ -14,6 +14,8 @@ import type { BreathingPattern, BreathingPhase } from '@/constants/exercises';
 interface UseBreathingEngineProps {
   pattern: BreathingPattern[];
   totalDuration: number;
+  /** Shorter, calmer motion (accessibility / user preference) */
+  reduceMotion?: boolean;
 }
 
 interface BreathingState {
@@ -41,6 +43,7 @@ interface UseBreathingEngineReturn {
 export function useBreathingEngine({
   pattern,
   totalDuration,
+  reduceMotion = false,
 }: UseBreathingEngineProps): UseBreathingEngineReturn {
   const [isActive, setIsActive] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -82,7 +85,9 @@ export function useBreathingEngine({
   // Animér pustesirkelen basert på fase
   const animatePhase = useCallback(
     (phase: BreathingPhase, phaseDuration: number, progress: number) => {
-      const remainingMs = (1 - progress) * phaseDuration * 1000;
+      const rawRemaining = (1 - progress) * phaseDuration * 1000;
+      const remainingMs = reduceMotion ? Math.min(rawRemaining, 200) : rawRemaining;
+      const pulseDuration = reduceMotion ? 200 : 800;
 
       cancelAnimation(circleScale);
       cancelAnimation(glowOpacity);
@@ -106,15 +111,19 @@ export function useBreathingEngine({
         }
         case 'hold': {
           circleScale.value = 1.0;
-          circleScale.value = withRepeat(
-            withSequence(
-              withTiming(1.02, { duration: 800, easing: Easing.inOut(Easing.sin) }),
-              withTiming(0.98, { duration: 800, easing: Easing.inOut(Easing.sin) })
-            ),
-            -1,
-            true
-          );
-          glowOpacity.value = withTiming(0.5, { duration: 400 });
+          if (reduceMotion) {
+            circleScale.value = 1.0;
+          } else {
+            circleScale.value = withRepeat(
+              withSequence(
+                withTiming(1.02, { duration: pulseDuration, easing: Easing.inOut(Easing.sin) }),
+                withTiming(0.98, { duration: pulseDuration, easing: Easing.inOut(Easing.sin) })
+              ),
+              -1,
+              true
+            );
+          }
+          glowOpacity.value = withTiming(0.5, { duration: reduceMotion ? 120 : 400 });
           break;
         }
         case 'exhale': {
@@ -132,20 +141,24 @@ export function useBreathingEngine({
         }
         case 'holdOut': {
           circleScale.value = 0.6;
-          circleScale.value = withRepeat(
-            withSequence(
-              withTiming(0.62, { duration: 800, easing: Easing.inOut(Easing.sin) }),
-              withTiming(0.58, { duration: 800, easing: Easing.inOut(Easing.sin) })
-            ),
-            -1,
-            true
-          );
-          glowOpacity.value = withTiming(0.15, { duration: 400 });
+          if (reduceMotion) {
+            circleScale.value = 0.6;
+          } else {
+            circleScale.value = withRepeat(
+              withSequence(
+                withTiming(0.62, { duration: pulseDuration, easing: Easing.inOut(Easing.sin) }),
+                withTiming(0.58, { duration: pulseDuration, easing: Easing.inOut(Easing.sin) })
+              ),
+              -1,
+              true
+            );
+          }
+          glowOpacity.value = withTiming(0.15, { duration: reduceMotion ? 120 : 400 });
           break;
         }
       }
     },
-    [circleScale, glowOpacity]
+    [circleScale, glowOpacity, reduceMotion]
   );
 
   // Timer-loop

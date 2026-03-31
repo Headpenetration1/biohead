@@ -1,30 +1,42 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
-import { AppData, SessionRecord, loadAppData, saveAppData } from '@/utils/storage';
+import {
+  AppData,
+  SessionRecord,
+  defaultAppData,
+  loadAppData,
+  saveAppData,
+  SoundMode,
+} from '@/utils/storage';
 import { getToday, getYesterday } from '@/utils/formatTime';
-
-// ─── State ───
+import { nextStreakOnSessionComplete } from '@/utils/streak';
+import { syncDailyReminder } from '@/utils/reminders';
 
 interface AppState extends AppData {
   isLoading: boolean;
 }
 
-const initialState: AppState = {
+const baseInitial: AppState = {
+  ...defaultAppData,
   isLoading: true,
-  currentStreak: 0,
-  lastSessionDate: '',
-  longestStreak: 0,
-  sessions: [],
-  favorites: [],
-  hasCompletedOnboarding: false,
 };
-
-// ─── Actions ───
 
 type Action =
   | { type: 'LOAD_DATA'; payload: AppData }
   | { type: 'COMPLETE_SESSION'; payload: { exerciseId: string; duration: number } }
   | { type: 'TOGGLE_FAVORITE'; payload: string }
   | { type: 'COMPLETE_ONBOARDING'; payload?: 'calm' | 'focus' | 'energy' }
+  | {
+      type: 'UPDATE_PREFERENCES';
+      payload: Partial<{
+        hapticsEnabled: boolean;
+        reduceMotion: boolean;
+        soundMode: SoundMode;
+        reminderEnabled: boolean;
+        reminderHour: number;
+        reminderMinute: number;
+      }>;
+    }
+  | { type: 'SET_EXERCISE_DURATION'; payload: { exerciseId: string; duration: number } }
   | { type: 'RESET_DATA' };
 
 function reducer(state: AppState, action: Action): AppState {
@@ -36,14 +48,12 @@ function reducer(state: AppState, action: Action): AppState {
       const today = getToday();
       const yesterday = getYesterday();
 
-      let newStreak = state.currentStreak;
-      if (state.lastSessionDate === today) {
-        // Allerede trent i dag, streak endres ikke
-      } else if (state.lastSessionDate === yesterday) {
-        newStreak += 1;
-      } else {
-        newStreak = 1;
-      }
+      const newStreak = nextStreakOnSessionComplete(
+        state.lastSessionDate,
+        state.currentStreak,
+        today,
+        yesterday
+      );
 
       const newSession: SessionRecord = {
         id: `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -79,43 +89,72 @@ function reducer(state: AppState, action: Action): AppState {
         userGoal: action.payload,
       };
 
+    case 'UPDATE_PREFERENCES':
+      return { ...state, ...action.payload };
+
+    case 'SET_EXERCISE_DURATION':
+      return {
+        ...state,
+        exerciseDurationPrefs: {
+          ...state.exerciseDurationPrefs,
+          [action.payload.exerciseId]: action.payload.duration,
+        },
+      };
+
     case 'RESET_DATA':
-      return { ...initialState, isLoading: false };
+      return { ...baseInitial, isLoading: false };
 
     default:
       return state;
   }
 }
 
-// ─── Context ───
+export type PreferenceUpdates = Partial<{
+  hapticsEnabled: boolean;
+  reduceMotion: boolean;
+  soundMode: SoundMode;
+  reminderEnabled: boolean;
+  reminderHour: number;
+  reminderMinute: number;
+}>;
 
 interface AppContextValue {
   state: AppState;
   completeSession: (exerciseId: string, duration: number) => void;
   toggleFavorite: (exerciseId: string) => void;
   completeOnboarding: (goal?: 'calm' | 'focus' | 'energy') => void;
+  updatePreferences: (prefs: PreferenceUpdates) => void;
+  setExerciseDuration: (exerciseId: string, duration: number) => void;
   resetData: () => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const [state, dispatch] = useReducer(reducer, baseInitial);
 
-  // Last data ved oppstart
   useEffect(() => {
     loadAppData().then((data) => {
       dispatch({ type: 'LOAD_DATA', payload: data });
     });
   }, []);
 
-  // Lagre ved endringer
   useEffect(() => {
     if (!state.isLoading) {
       const { isLoading, ...data } = state;
       saveAppData(data);
     }
   }, [state]);
+
+  useEffect(() => {
+    if (state.isLoading) return;
+    void syncDailyReminder(state.reminderEnabled, state.reminderHour, state.reminderMinute);
+  }, [
+    state.isLoading,
+    state.reminderEnabled,
+    state.reminderHour,
+    state.reminderMinute,
+  ]);
 
   const completeSession = useCallback((exerciseId: string, duration: number) => {
     dispatch({ type: 'COMPLETE_SESSION', payload: { exerciseId, duration } });
@@ -129,12 +168,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'COMPLETE_ONBOARDING', payload: goal });
   }, []);
 
+  const updatePreferences = useCallback((prefs: PreferenceUpdates) => {
+    dispatch({ type: 'UPDATE_PREFERENCES', payload: prefs });
+  }, []);
+
+  const setExerciseDuration = useCallback((exerciseId: string, duration: number) => {
+    dispatch({ type: 'SET_EXERCISE_DURATION', payload: { exerciseId, duration } });
+  }, []);
+
   const resetData = useCallback(() => {
     dispatch({ type: 'RESET_DATA' });
   }, []);
 
   return (
-    <AppContext.Provider value={{ state, completeSession, toggleFavorite, completeOnboarding, resetData }}>
+    <AppContext.Provider
+      value={{
+        state,
+        completeSession,
+        toggleFavorite,
+        completeOnboarding,
+        updatePreferences,
+        setExerciseDuration,
+        resetData,
+      }}
+    >
       {children}
     </AppContext.Provider>
   );

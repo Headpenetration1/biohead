@@ -8,6 +8,7 @@ import Animated, {
 import { Colors } from '@/constants/colors';
 import { Typography } from '@/constants/typography';
 import { useHaptics } from '@/hooks/useHaptics';
+import { useAppContext } from '@/context/AppContext';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -29,7 +30,8 @@ export default function HapticButton({
   textStyle,
 }: HapticButtonProps) {
   const scale = useSharedValue(1);
-  const { medium } = useHaptics();
+  const { state } = useAppContext();
+  const { medium } = useHaptics(state.hapticsEnabled);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],

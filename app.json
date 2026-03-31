@@ -9,24 +9,30 @@
     "scheme": "biohead",
     "userInterfaceStyle": "dark",
     "splash": {
-      "backgroundColor": "#020508"
+      "backgroundColor": "#020508",
+      "resizeMode": "contain"
     },
     "assetBundlePatterns": [
-      "**/*"
+      "assets/**/*"
     ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "no.biohead.app"
+      "bundleIdentifier": "no.biohead.app",
+      "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#020508"
       },
-      "package": "no.biohead.app"
+      "package": "no.biohead.app",
+      "versionCode": 1
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      "expo-av",
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true

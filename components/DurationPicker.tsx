@@ -9,10 +9,16 @@ interface DurationPickerProps {
   value: number;
   onChange: (duration: number) => void;
   glowColor: string;
+  hapticsEnabled?: boolean;
 }
 
-export default function DurationPicker({ value, onChange, glowColor }: DurationPickerProps) {
-  const { selection } = useHaptics();
+export default function DurationPicker({
+  value,
+  onChange,
+  glowColor,
+  hapticsEnabled = true,
+}: DurationPickerProps) {
+  const { selection } = useHaptics(hapticsEnabled);
 
   return (
     <View style={styles.container}>

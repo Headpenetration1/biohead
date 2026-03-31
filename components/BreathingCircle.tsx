@@ -20,6 +20,8 @@ interface BreathingCircleProps {
   circleScale: SharedValue<number>;
   glowOpacity: SharedValue<number>;
   ringProgress: SharedValue<number>;
+  /** VoiceOver: phase + remaining time */
+  accessibilityLabel: string;
 }
 
 const CIRCLE_R = 80;
@@ -36,6 +38,7 @@ export default function BreathingCircle({
   circleScale,
   glowOpacity,
   ringProgress,
+  accessibilityLabel,
 }: BreathingCircleProps) {
   // Animert hovedsirkel (Outer Core)
   const animatedCircleProps = useAnimatedProps(() => ({
@@ -68,7 +71,13 @@ export default function BreathingCircle({
   }));
 
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      accessible
+      accessibilityRole="text"
+      accessibilityLiveRegion="polite"
+      accessibilityLabel={accessibilityLabel}
+    >
       {/* Ytre glow */}
       <Animated.View
         style={[
@@ -142,11 +151,15 @@ export default function BreathingCircle({
       </Svg>
 
       {/* Faselabel & Timer Wrap for better positioning over the orb */}
-      <View style={styles.centerTextContainer}>
-        <Animated.Text style={styles.timer}>
+      <View style={styles.centerTextContainer} importantForAccessibility="no-hide-descendants">
+        <Animated.Text style={styles.timer} accessibilityElementsHidden importantForAccessibility="no">
           {formatTime(remainingSeconds)}
         </Animated.Text>
-        <Animated.Text style={[styles.phaseLabel]}>
+        <Animated.Text
+          style={[styles.phaseLabel]}
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+        >
           {phaseLabel}
         </Animated.Text>
       </View>

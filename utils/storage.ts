@@ -2,6 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const STORAGE_KEY = '@biohead_data';
 
+export type SoundMode = 'off' | 'cues' | 'ambient';
+
 export interface SessionRecord {
   id: string;
   exerciseId: string;
@@ -17,26 +19,50 @@ export interface AppData {
   favorites: string[];
   hasCompletedOnboarding: boolean;
   userGoal?: 'calm' | 'focus' | 'energy';
+  hapticsEnabled: boolean;
+  reduceMotion: boolean;
+  soundMode: SoundMode;
+  reminderEnabled: boolean;
+  reminderHour: number;
+  reminderMinute: number;
+  exerciseDurationPrefs: Record<string, number>;
 }
 
-const defaultData: AppData = {
+export const defaultAppData: AppData = {
   currentStreak: 0,
   lastSessionDate: '',
   longestStreak: 0,
   sessions: [],
   favorites: [],
   hasCompletedOnboarding: false,
+  hapticsEnabled: true,
+  reduceMotion: false,
+  soundMode: 'off',
+  reminderEnabled: false,
+  reminderHour: 9,
+  reminderMinute: 0,
+  exerciseDurationPrefs: {},
 };
 
 export async function loadAppData(): Promise<AppData> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     if (raw) {
-      return { ...defaultData, ...JSON.parse(raw) };
+      const parsed = JSON.parse(raw) as Partial<AppData>;
+      return {
+        ...defaultAppData,
+        ...parsed,
+        favorites: parsed.favorites ?? defaultAppData.favorites,
+        sessions: parsed.sessions ?? defaultAppData.sessions,
+        exerciseDurationPrefs: {
+          ...defaultAppData.exerciseDurationPrefs,
+          ...(parsed.exerciseDurationPrefs ?? {}),
+        },
+      };
     }
-    return defaultData;
+    return defaultAppData;
   } catch {
-    return defaultData;
+    return defaultAppData;
   }
 }
 

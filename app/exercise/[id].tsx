@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,16 +13,40 @@ import { exercises } from '@/constants/exercises';
 import * as LucideIcons from 'lucide-react-native';
 import DurationPicker from '@/components/DurationPicker';
 import HapticButton from '@/components/HapticButton';
+import { useAppContext } from '@/context/AppContext';
+import { useHaptics } from '@/hooks/useHaptics';
 
 export default function ExerciseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { state, toggleFavorite, setExerciseDuration } = useAppContext();
+  const { light } = useHaptics(state.hapticsEnabled);
 
   const exercise = exercises.find((e) => e.id === id);
-  const [duration, setDuration] = useState(exercise?.defaultDuration ?? 60);
+  const [duration, setDuration] = useState(60);
+
+  useEffect(() => {
+    const ex = exercises.find((e) => e.id === id);
+    if (!ex) return;
+    const saved = state.exerciseDurationPrefs[id];
+    setDuration(saved != null ? saved : ex.defaultDuration);
+  }, [id, state.exerciseDurationPrefs]);
+
+  const onDurationChange = useCallback(
+    (value: number) => {
+      setDuration(value);
+      if (exercise) setExerciseDuration(exercise.id, value);
+    },
+    [exercise, setExerciseDuration]
+  );
 
   if (!exercise) return null;
+
+  const isFavorite = state.favorites.includes(exercise.id);
+  const IconComponent = (
+    LucideIcons as unknown as Record<string, React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>>
+  )[exercise.icon];
 
   return (
     <ScrollView
@@ -33,7 +57,6 @@ export default function ExerciseDetailScreen() {
       ]}
       showsVerticalScrollIndicator={false}
     >
-      {/* Bakgrunnsglow */}
       <View
         style={[
           styles.bgGlow,
@@ -41,15 +64,26 @@ export default function ExerciseDetailScreen() {
         ]}
       />
 
-      {/* Tilbake-knapp */}
-      <Animated.View entering={FadeIn.duration(400)}>
+      <Animated.View entering={FadeIn.duration(400)} style={styles.topRow}>
         <Pressable onPress={() => router.back()} style={styles.backButton}>
           <Text style={styles.backArrow}>‹</Text>
           <Text style={styles.backText}>Tilbake</Text>
         </Pressable>
+        <Pressable
+          onPress={() => {
+            light();
+            toggleFavorite(exercise.id);
+          }}
+          style={styles.favButton}
+          accessibilityRole="button"
+          accessibilityLabel={isFavorite ? 'Fjern favoritt' : 'Legg til favoritt'}
+        >
+          <Text style={[styles.favIcon, isFavorite && styles.favIconOn]}>
+            {isFavorite ? '♥' : '♡'}
+          </Text>
+        </Pressable>
       </Animated.View>
 
-      {/* Ikon */}
       <Animated.View
         entering={FadeInDown.delay(100).duration(500).springify()}
         style={[
@@ -61,16 +95,12 @@ export default function ExerciseDetailScreen() {
         ]}
       >
         <Animated.View style={styles.iconContainer} entering={ZoomIn.duration(600).springify()}>
-          {(() => {
-            const IconComponent = (LucideIcons as any)[exercise.icon];
-            return IconComponent ? (
-              <IconComponent size={72} color={exercise.glowColor} strokeWidth={1.5} />
-            ) : null;
-          })()}
+          {IconComponent ? (
+            <IconComponent size={72} color={exercise.glowColor} strokeWidth={1.5} />
+          ) : null}
         </Animated.View>
       </Animated.View>
 
-      {/* Tittel */}
       <Animated.Text
         entering={FadeInDown.delay(150).duration(500).springify()}
         style={styles.title}
@@ -78,7 +108,6 @@ export default function ExerciseDetailScreen() {
         {exercise.title}
       </Animated.Text>
 
-      {/* Beskrivelse */}
       <Animated.Text
         entering={FadeInDown.delay(200).duration(500).springify()}
         style={styles.description}
@@ -86,7 +115,6 @@ export default function ExerciseDetailScreen() {
         {exercise.description}
       </Animated.Text>
 
-      {/* Varighetsvelger */}
       <Animated.View
         entering={FadeInDown.delay(250).duration(500).springify()}
         style={styles.pickerSection}
@@ -94,12 +122,12 @@ export default function ExerciseDetailScreen() {
         <Text style={styles.sectionLabel}>Varighet</Text>
         <DurationPicker
           value={duration}
-          onChange={setDuration}
+          onChange={onDurationChange}
           glowColor={exercise.glowColor}
+          hapticsEnabled={state.hapticsEnabled}
         />
       </Animated.View>
 
-      {/* Start-knapp */}
       <Animated.View
         entering={FadeInDown.delay(300).duration(500).springify()}
         style={styles.startSection}
@@ -117,7 +145,6 @@ export default function ExerciseDetailScreen() {
         />
       </Animated.View>
 
-      {/* Teknikk-info */}
       <Animated.View
         entering={FadeInDown.delay(350).duration(500).springify()}
         style={styles.techniqueBox}
@@ -127,7 +154,7 @@ export default function ExerciseDetailScreen() {
           {exercise.pattern.map((step, i) => (
             <View
               key={i}
-              style={[styles.patternChip, { backgroundColor: `${exercise.glowColor} 12` }]}
+              style={[styles.patternChip, { backgroundColor: `${exercise.glowColor}12` }]}
             >
               <Text style={[styles.patternDuration, { color: exercise.glowColor }]}>
                 {step.duration}s
@@ -157,12 +184,18 @@ const styles = StyleSheet.create({
     width: 500,
     height: 500,
     borderRadius: 250,
-    opacity: 0.1, // Stronger glow for the hero section
+    opacity: 0.1,
+  },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 16,
   },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
     gap: 4,
     paddingVertical: 10,
     paddingHorizontal: 14,
@@ -170,7 +203,23 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
-    marginBottom: 32,
+  },
+  favButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  favIcon: {
+    fontSize: 22,
+    color: Colors.textMuted,
+  },
+  favIconOn: {
+    color: Colors.energyGold,
   },
   backArrow: {
     fontSize: 22,
@@ -183,7 +232,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   iconBox: {
-    width: 88, // Larger icon
+    width: 88,
     height: 88,
     borderRadius: 28,
     alignItems: 'center',
@@ -195,9 +244,7 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 8,
   },
-  iconContainer: {
-    // This container is just for the ZoomIn animation, no specific styles needed here
-  },
+  iconContainer: {},
   title: {
     fontFamily: Typography.fontFamily.bold,
     fontSize: Typography.sizes['3xl'],
@@ -237,7 +284,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 340,
     padding: 24,
-    backgroundColor: 'rgba(255,255,255,0.02)', // Glassy
+    backgroundColor: 'rgba(255,255,255,0.02)',
     borderRadius: 20,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',

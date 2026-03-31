@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, Pressable, Modal, StyleSheet, BackHandler } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeepAwake } from 'expo-keep-awake';
 import Animated, { FadeIn, FadeInDown, ZoomIn, BounceIn } from 'react-native-reanimated';
 import { Colors } from '@/constants/colors';
 import { Typography } from '@/constants/typography';
@@ -9,11 +10,15 @@ import { exercises } from '@/constants/exercises';
 import { useAppContext } from '@/context/AppContext';
 import { useBreathingEngine } from '@/hooks/useBreathingEngine';
 import { useHaptics } from '@/hooks/useHaptics';
+import { useBreathAudio } from '@/hooks/useBreathAudio';
+import { formatTime } from '@/utils/formatTime';
 import BreathingCircle from '@/components/BreathingCircle';
 import StreakBadge from '@/components/StreakBadge';
 import HapticButton from '@/components/HapticButton';
 
 export default function SessionScreen() {
+  useKeepAwake();
+
   const { id, duration: durationParam } = useLocalSearchParams<{
     id: string;
     duration: string;
@@ -21,7 +26,7 @@ export default function SessionScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { state, completeSession } = useAppContext();
-  const { success, light, medium } = useHaptics();
+  const { success, light, medium } = useHaptics(state.hapticsEnabled);
 
   const exercise = exercises.find((e) => e.id === id);
   const totalDuration = Number(durationParam) || 60;
@@ -32,9 +37,13 @@ export default function SessionScreen() {
   const engine = useBreathingEngine({
     pattern: exercise?.pattern ?? [],
     totalDuration,
+    reduceMotion: state.reduceMotion,
   });
 
-  // Start automatisk
+  const sessionActive = engine.isActive && !isComplete;
+
+  useBreathAudio(state.soundMode, sessionActive, engine.isPaused, engine.currentPhase);
+
   useEffect(() => {
     if (exercise && !engine.isActive && !isComplete) {
       const timer = setTimeout(() => engine.start(), 500);
@@ -42,13 +51,11 @@ export default function SessionScreen() {
     }
   }, []);
 
-  // Haptics ved fasebytte i pusten
   const prevPhase = useRef(engine.currentPhase);
   useEffect(() => {
     if (engine.isActive && !engine.isPaused && engine.currentPhase !== prevPhase.current) {
       prevPhase.current = engine.currentPhase;
 
-      // Lett feedback for pust in/ut, medium for holdes
       if (engine.currentPhase === 'inhale' || engine.currentPhase === 'exhale') {
         light();
       } else if (engine.currentPhase === 'hold' || engine.currentPhase === 'holdOut') {
@@ -57,17 +64,15 @@ export default function SessionScreen() {
     }
   }, [engine.currentPhase, engine.isActive, engine.isPaused, light, medium]);
 
-  // Android: intercept hardware back
   useEffect(() => {
     const handler = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (isComplete) return false; // allow normal back when done
+      if (isComplete) return false;
       setShowQuitModal(true);
-      return true; // prevent default back
+      return true;
     });
     return () => handler.remove();
   }, [isComplete]);
 
-  // Sjekk om ferdig
   useEffect(() => {
     if (!engine.isActive && engine.totalProgress >= 1 && !isComplete) {
       setIsComplete(true);
@@ -94,13 +99,13 @@ export default function SessionScreen() {
 
   if (!exercise) return null;
 
-  // ═══════ FULLFØRT-SKJERM ═══════
+  const a11yBreathLabel = `${engine.isPaused ? 'Pause' : engine.currentLabel}, ${formatTime(engine.remainingSeconds)} gjenstår av økten`;
+
   if (isComplete) {
     return (
       <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <View style={[styles.bgGlow, { backgroundColor: exercise.glowColor }]} />
 
-        {/* Checkmark */}
         <Animated.View
           entering={ZoomIn.delay(200).duration(500).springify()}
           style={[styles.checkCircle, { backgroundColor: `${exercise.glowColor}20`, borderColor: `${exercise.glowColor}40` }]}
@@ -108,7 +113,6 @@ export default function SessionScreen() {
           <Text style={[styles.checkMark, { color: exercise.glowColor }]}>✓</Text>
         </Animated.View>
 
-        {/* Tittel */}
         <Animated.Text
           entering={FadeInDown.delay(400).duration(500).springify()}
           style={styles.completeTitle}
@@ -116,7 +120,6 @@ export default function SessionScreen() {
           Bra jobbet!
         </Animated.Text>
 
-        {/* Oppsummering */}
         <Animated.Text
           entering={FadeInDown.delay(500).duration(500).springify()}
           style={styles.completeSummary}
@@ -124,12 +127,10 @@ export default function SessionScreen() {
           Du fullførte {totalDuration >= 60 ? `${Math.floor(totalDuration / 60)} minutt${totalDuration >= 120 ? 'er' : ''}` : `${totalDuration} sekunder`}{'\n'}med {exercise.title}-øvelsen
         </Animated.Text>
 
-        {/* Streak */}
         <Animated.View entering={BounceIn.delay(600).duration(500)}>
           <StreakBadge count={state.currentStreak} large />
         </Animated.View>
 
-        {/* Knapper */}
         <Animated.View
           entering={FadeInDown.delay(700).duration(500).springify()}
           style={styles.completeButtons}
@@ -154,15 +155,18 @@ export default function SessionScreen() {
     );
   }
 
-  // ═══════ AKTIV SESJON ═══════
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <View style={[styles.bgGlow, { backgroundColor: exercise.glowColor }]} />
 
-      {/* Topbar: Pause + Close */}
       <View style={[styles.topBar, { top: insets.top + 12 }]}>
         <Animated.View entering={FadeIn.delay(300).duration(400)}>
-          <Pressable onPress={handlePauseResume} style={styles.topButton}>
+          <Pressable
+            onPress={handlePauseResume}
+            style={styles.topButton}
+            accessibilityRole="button"
+            accessibilityLabel={engine.isPaused ? 'Fortsett økt' : 'Pause økt'}
+          >
             <Text style={styles.topButtonIcon}>{engine.isPaused ? '▶' : '❚❚'}</Text>
             <Text style={styles.topButtonText}>
               {engine.isPaused ? 'Fortsett' : 'Pause'}
@@ -171,17 +175,18 @@ export default function SessionScreen() {
         </Animated.View>
 
         <Animated.View entering={FadeIn.delay(300).duration(400)}>
-          <Pressable onPress={() => setShowQuitModal(true)} style={styles.topButton}>
+          <Pressable
+            onPress={() => setShowQuitModal(true)}
+            style={styles.topButton}
+            accessibilityRole="button"
+            accessibilityLabel="Avslutt økt"
+          >
             <Text style={styles.closeIcon}>✕</Text>
           </Pressable>
         </Animated.View>
       </View>
 
-      {/* Pustesirkel */}
-      <Animated.View
-        entering={FadeIn.delay(200).duration(800)}
-        style={styles.circleArea}
-      >
+      <Animated.View entering={FadeIn.delay(200).duration(800)} style={styles.circleArea}>
         <BreathingCircle
           glowColor={exercise.glowColor}
           phaseLabel={engine.isPaused ? 'Pause' : engine.currentLabel}
@@ -190,21 +195,19 @@ export default function SessionScreen() {
           circleScale={engine.circleScale}
           glowOpacity={engine.glowOpacity}
           ringProgress={engine.ringProgress}
+          accessibilityLabel={a11yBreathLabel}
         />
       </Animated.View>
 
-      {/* Øvelsesnavn */}
       <Animated.View entering={FadeIn.delay(500).duration(400)} style={styles.bottomLabel}>
-        <Text style={styles.exerciseName}>{exercise.title}</Text>
+        <Text style={styles.exerciseName} accessibilityRole="header">
+          {exercise.title}
+        </Text>
       </Animated.View>
 
-      {/* Quit-modal */}
       <Modal visible={showQuitModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <Animated.View
-            entering={ZoomIn.duration(300).springify()}
-            style={styles.modalContent}
-          >
+          <Animated.View entering={ZoomIn.duration(300).springify()} style={styles.modalContent}>
             <Text style={styles.modalTitle}>Avslutte økten?</Text>
             <Text style={styles.modalBody}>
               Fremgangen din vil ikke bli lagret.
@@ -240,13 +243,12 @@ const styles = StyleSheet.create({
     width: 500,
     height: 500,
     borderRadius: 250,
-    opacity: 0.1, // Stronger, more vibrant glow behind the orb
+    opacity: 0.1,
   },
 
-  // Topbar
   topBar: {
     position: 'absolute',
-    top: 0, // Will be overridden by dynamic insets in JSX
+    top: 0,
     left: 24,
     right: 24,
     flexDirection: 'row',
@@ -279,14 +281,12 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
 
-  // Circle area
   circleArea: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
-  // Bottom
   bottomLabel: {
     position: 'absolute',
     bottom: 60,
@@ -300,7 +300,6 @@ const styles = StyleSheet.create({
     letterSpacing: 4,
   },
 
-  // Complete screen
   checkCircle: {
     width: 88,
     height: 88,
@@ -340,17 +339,16 @@ const styles = StyleSheet.create({
     gap: 16,
   },
 
-  // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(2,5,8,0.85)', // Deep midnight overlay
+    backgroundColor: 'rgba(2,5,8,0.85)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalContent: {
     width: '85%',
     maxWidth: 320,
-    backgroundColor: 'rgba(255,255,255,0.05)', // Glassmorphism
+    backgroundColor: 'rgba(255,255,255,0.05)',
     borderRadius: 28,
     padding: 32,
     borderWidth: 1,
@@ -392,7 +390,7 @@ const styles = StyleSheet.create({
   modalButtonDestructive: {
     flex: 1,
     paddingVertical: 16,
-    backgroundColor: 'rgba(255,42,85,0.15)', // Vibrant error color
+    backgroundColor: 'rgba(255,42,85,0.15)',
     borderRadius: 16,
     alignItems: 'center',
     borderWidth: 1,

@@ -1,101 +1,94 @@
-# Biohead – Pusteøvelse-app (MVP)
+# Biohead – Pusteøvelse-app
 
-En minimalistisk mobilapp for guidede pusteøvelser og mentale "reset"-økter, bygget med React Native og Expo.
+En minimalistisk mobilapp for guidede pusteøvelser og mentale «reset»-økter, bygget med **React Native** og **Expo**.
 
 ## Funksjoner
 
-- **3 pusteøvelser**: Ro (4-7-8), Fokus (box breathing), Energi (rask pust)
-- **Animert pusteguide**: Pulserende sirkel med glow-effekt og progressring
-- **Varighetsvelger**: 30, 60, 90 eller 120 sekunder
-- **Streak-tracking**: Motivasjon gjennom daglig streak med lokal lagring
-- **Haptic feedback**: Subtil vibrasjon ved interaksjoner
-- **Biohead brand**: Fargepalett, Comfortaa-font og visuell identitet
+- **Flere pusteøvelser** (ro, fokus, energi, søvn, balanse, stressned) med animert sirkel
+- **Varighet** 30–120 s, med **husket varighet per øvelse**
+- **Streak** og **økthistorikk** (kun lokalt på enheten)
+- **Onboarding** med valg av hovedmål (påvirker rekkefølge på forsiden)
+- **Favoritter** (hjerte på kort og øvelsesside)
+- **Innstillinger**: haptikk, redusert bevegelse, **lyd** (av / korte signaler / ambient loop), **daglig påminnelse** (lokalt varsel), nullstill data
+- **Tilgjengelighet**: VoiceOver-label på pustesirkelen under økt
+- **Feilrapportering**: siste krasj lagres lokalt; bruker kan kontakte support fra feilskjerm
 
 ## Tech stack
 
-- **React Native** med **Expo SDK 51**
-- **TypeScript** (strict mode)
-- **expo-router** (filbasert navigasjon)
-- **react-native-reanimated** (pusteanimasjoner)
-- **react-native-svg** (sirkel og progressring)
-- **AsyncStorage** (lokal lagring av streak/historikk)
-- **expo-haptics** (haptic feedback)
+- **Expo SDK 54** · **TypeScript** (strict)
+- **expo-router** · **react-native-reanimated** · **react-native-svg**
+- **AsyncStorage** · **expo-haptics** · **expo-av** (lyd) · **expo-notifications** (påminnelse) · **expo-keep-awake** (økt)
 
 ## Kom i gang
 
 ```bash
-# Installer avhengigheter
-npm install
-
-# Start Expo dev server
+npm install --legacy-peer-deps   # ved peer-konflikter
 npx expo start
-
-# Kjør på iOS simulator
-npx expo start --ios
-
-# Kjør på Android emulator
-npx expo start --android
 ```
+
+Unset `CI` i miljøer der tom `CI` gir Expo-feil:
+
+```bash
+unset CI && npx expo start
+```
+
+### Tester
+
+```bash
+npm test
+```
+
+## Produksjonsbygg (EAS)
+
+1. Installer EAS CLI: `npm i -g eas-cli`
+2. Logg inn: `eas login`
+3. Kjør `eas build:configure` om du trenger å koble prosjektet til Expo
+4. iOS (TestFlight / App Store): `eas build --platform ios --profile production`
+5. Øk `ios.buildNumber` i [app.json](app.json) ved behov (EAS `autoIncrement` håndterer ofte dette)
+
+Se [eas.json](eas.json) for profiler (`development`, `preview`, `production`).
+
+### App Store – sjekkliste (manuelt)
+
+- [ ] Apple Developer-konto, signeringsprofiler via EAS
+- [ ] App Store Connect: beskrivelse, nøkkelord, skjermbilder (påkrevd størrelser)
+- [ ] **App Privacy**: data lagres lokalt (AsyncStorage), ingen konto – besvar spørsmålene deretter
+- [ ] Aldersanbefaling og support-URL / personvern (om aktuelt)
+- [ ] TestFlight-runde før App Review
+
+### Ikon
+
+Master-ikon skal være **1024×1024** for butikken. Prosjektet bruker [assets/icon.png](assets/icon.png) (oppgradert fra kilde ved behov).
+
+### Deeplink
+
+App-skjema: `biohead` (se [app.json](app.json)). Eksempel: `biohead://exercise/calm`
 
 ## Prosjektstruktur
 
 ```
 biohead/
 ├── app/                    # Skjermer (expo-router)
-│   ├── _layout.tsx         # Root layout, fonter, providers
-│   ├── index.tsx           # Hjemskjerm med øvelseskort
+│   ├── _layout.tsx
+│   ├── index.tsx
+│   ├── onboarding.tsx
+│   ├── settings.tsx
+│   ├── history.tsx
 │   └── exercise/
-│       ├── [id].tsx        # Øvelsesdetaljer + varighetsvalg
-│       └── session.tsx     # Aktiv pustesesjon + fullført
-├── components/             # Gjenbrukbare komponenter
-│   ├── BreathingCircle.tsx # Animert pustesirkel (SVG + Reanimated)
-│   ├── DurationPicker.tsx  # Segmented control for varighet
-│   ├── ExerciseCard.tsx    # Kort på hjemskjermen
-│   ├── HapticButton.tsx    # Knapp med haptic feedback
-│   └── StreakBadge.tsx     # Streak-indikator
-├── constants/              # Konfigurasjon
-│   ├── colors.ts           # Biohead fargepalett
-│   ├── exercises.ts        # Øvelsesdata og pustemønstre
-│   └── typography.ts       # Comfortaa font-config
-├── context/
-│   └── AppContext.tsx       # Global state (streak, historikk)
+│       ├── [id].tsx
+│       └── session.tsx
+├── assets/sounds/          # WAV-filer for pustesignaler / ambient
+├── components/
+├── constants/
+├── context/AppContext.tsx
 ├── hooks/
-│   ├── useBreathingEngine.ts  # Kjernelogikk for pustetiming
-│   └── useHaptics.ts       # Haptic feedback wrapper
-└── utils/
-    ├── storage.ts           # AsyncStorage wrapper
-    └── formatTime.ts        # Tidsformatering
+├── utils/
+└── __tests__/
 ```
 
 ## Designsystem
 
-### Farger
-| Farge           | Hex       | Bruk                         |
-|-----------------|-----------|------------------------------|
-| Dark Base       | `#0e2025` | Primær bakgrunn              |
-| Green Accent    | `#46917c` | CTA, Ro-modus                |
-| Deep Blue       | `#1e495d` | Sekundær, Fokus-modus        |
-| Light Beige     | `#FFF9ED` | Tekst på mørk bakgrunn       |
-| Energy Gold     | `#d4a574` | Energi-modus, streak         |
-
-### Typografi
-**Comfortaa** i vektene Regular (400), Medium (500), SemiBold (600) og Bold (700).
-
-## Pustemønstre
-
-| Øvelse | Teknikk         | Mønster                    |
-|--------|-----------------|----------------------------|
-| Ro     | 4-7-8           | Inn 4s → Hold 7s → Ut 8s  |
-| Fokus  | Box breathing   | Inn 4s → Hold 4s → Ut 4s → Hold 4s |
-| Energi | Energizing      | Inn 3s → Ut 3s             |
-
-## Videre utvikling
-
-- [ ] Push-varsler med daglig påminnelse
-- [ ] Onboarding-flow (3 steg)
-- [ ] Favorittøvelser
-- [ ] Lyd/ambient audio under økter
-- [ ] Widget for iOS/Android
+Se [constants/colors.ts](constants/colors.ts) og [constants/typography.ts](constants/typography.ts).
 
 ## Kontakt
 
