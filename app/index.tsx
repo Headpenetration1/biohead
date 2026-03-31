@@ -70,6 +70,20 @@ export default function HomeScreen() {
 
   const favoriteSet = useMemo(() => new Set(state.favorites), [state.favorites]);
 
+  const favoriteExercises = useMemo(() => {
+    return state.favorites
+      .map((fid) => exercises.find((e) => e.id === fid))
+      .filter((e): e is (typeof exercises)[number] => e != null);
+  }, [state.favorites]);
+
+  const mainExercises = useMemo(() => {
+    if (state.favorites.length === 0) return sortedExercises;
+    return sortedExercises.filter((e) => !favoriteSet.has(e.id));
+  }, [sortedExercises, favoriteSet, state.favorites.length]);
+
+  const showMainHeading = favoriteExercises.length > 0 && mainExercises.length > 0;
+  const mainCardIndexOffset = favoriteExercises.length;
+
   if (state.isLoading) {
     return <View style={[styles.container, styles.loading]} />;
   }
@@ -140,12 +154,40 @@ export default function HomeScreen() {
           )}
         </Animated.View>
 
+        {favoriteExercises.length > 0 ? (
+          <>
+            <Text style={styles.sectionHeading}>Favoritter</Text>
+            <View style={[styles.cardsContainer, styles.sectionBlock]}>
+              {favoriteExercises.map((ex, i) => (
+                <ExerciseCard
+                  key={ex.id}
+                  exercise={ex}
+                  index={i}
+                  isFavorite={favoriteSet.has(ex.id)}
+                  hapticsEnabled={state.hapticsEnabled}
+                  onToggleFavorite={() => toggleFavorite(ex.id)}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/exercise/[id]',
+                      params: { id: ex.id },
+                    })
+                  }
+                />
+              ))}
+            </View>
+          </>
+        ) : null}
+
+        {showMainHeading ? (
+          <Text style={[styles.sectionHeading, styles.sectionHeadingSpaced]}>Alle øvelser</Text>
+        ) : null}
+
         <View style={styles.cardsContainer}>
-          {sortedExercises.map((ex, i) => (
+          {mainExercises.map((ex, i) => (
             <ExerciseCard
               key={ex.id}
               exercise={ex}
-              index={i}
+              index={mainCardIndexOffset + i}
               isFavorite={favoriteSet.has(ex.id)}
               hapticsEnabled={state.hapticsEnabled}
               onToggleFavorite={() => toggleFavorite(ex.id)}
@@ -270,6 +312,21 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.xl,
     color: Colors.textSecondary,
     letterSpacing: 0.5,
+  },
+  sectionHeading: {
+    fontFamily: Typography.fontFamily.bold,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textMuted,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    alignSelf: 'flex-start',
+    marginBottom: 12,
+  },
+  sectionHeadingSpaced: {
+    marginTop: 8,
+  },
+  sectionBlock: {
+    marginBottom: 8,
   },
   cardsContainer: {
     gap: 16,

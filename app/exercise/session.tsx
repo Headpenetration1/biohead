@@ -12,6 +12,7 @@ import { useBreathingEngine } from '@/hooks/useBreathingEngine';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useBreathAudio } from '@/hooks/useBreathAudio';
 import { formatTime } from '@/utils/formatTime';
+import { logMindfulSessionIfEnabled } from '@/utils/appleHealthMindful';
 import BreathingCircle from '@/components/BreathingCircle';
 import StreakBadge from '@/components/StreakBadge';
 import HapticButton from '@/components/HapticButton';
@@ -79,9 +80,19 @@ export default function SessionScreen() {
       success();
       if (exercise) {
         completeSession(exercise.id, totalDuration);
+        void logMindfulSessionIfEnabled(state.healthSyncEnabled, totalDuration);
       }
     }
-  }, [engine.isActive, engine.totalProgress, isComplete, exercise, totalDuration, completeSession, success]);
+  }, [
+    engine.isActive,
+    engine.totalProgress,
+    isComplete,
+    exercise,
+    totalDuration,
+    completeSession,
+    success,
+    state.healthSyncEnabled,
+  ]);
 
   const handlePauseResume = useCallback(() => {
     if (engine.isPaused) {

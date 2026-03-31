@@ -1,3 +1,5 @@
+import { initSentry } from '@/utils/initSentry';
+import * as Sentry from '@sentry/react-native';
 import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -13,9 +15,11 @@ import { AppProvider } from '@/context/AppContext';
 import { Colors } from '@/constants/colors';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
+initSentry();
+
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
+function RootLayout() {
   const [fontsLoaded] = useFonts({
     Comfortaa_400Regular,
     Comfortaa_500Medium,
@@ -62,3 +66,5 @@ export default function RootLayout() {
     </ErrorBoundary>
   );
 }
+
+export default Sentry.wrap(RootLayout);

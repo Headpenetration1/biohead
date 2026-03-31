@@ -26,6 +26,8 @@ export interface AppData {
   reminderHour: number;
   reminderMinute: number;
   exerciseDurationPrefs: Record<string, number>;
+  /** iOS: log Mindful Session to Apple Health when a session completes */
+  healthSyncEnabled: boolean;
 }
 
 export const defaultAppData: AppData = {
@@ -42,6 +44,7 @@ export const defaultAppData: AppData = {
   reminderHour: 9,
   reminderMinute: 0,
   exerciseDurationPrefs: {},
+  healthSyncEnabled: false,
 };
 
 export async function loadAppData(): Promise<AppData> {

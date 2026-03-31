@@ -8,6 +8,7 @@ import {
   Switch,
   Alert,
   Linking,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,6 +18,7 @@ import { Typography } from '@/constants/typography';
 import { useAppContext } from '@/context/AppContext';
 import type { SoundMode } from '@/utils/storage';
 import { requestNotificationPermission } from '@/utils/reminders';
+import { requestHealthKitMindfulAccess } from '@/utils/appleHealthMindful';
 
 const REMINDER_PRESETS: { label: string; hour: number; minute: number }[] = [
   { label: '08:00', hour: 8, minute: 0 },
@@ -36,6 +38,25 @@ export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { state, updatePreferences, resetData } = useAppContext();
+
+  const onHealthSyncToggle = useCallback(
+    async (enabled: boolean) => {
+      if (!enabled) {
+        updatePreferences({ healthSyncEnabled: false });
+        return;
+      }
+      const ok = await requestHealthKitMindfulAccess();
+      if (!ok) {
+        Alert.alert(
+          'Apple Helse',
+          'Biohead trenger tillatelse for å skrive mindful minutes. Sjekk Helse-appen under Innstillinger hvis du tidligere avslo.'
+        );
+        return;
+      }
+      updatePreferences({ healthSyncEnabled: true });
+    },
+    [updatePreferences]
+  );
 
   const onReminderToggle = useCallback(
     async (enabled: boolean) => {
@@ -183,6 +204,28 @@ export default function SettingsScreen() {
           </>
         ) : null}
       </View>
+
+      {Platform.OS === 'ios' ? (
+        <>
+          <Text style={styles.sectionLabel}>Integrasjoner</Text>
+          <View style={styles.card}>
+            <View style={styles.row}>
+              <View style={styles.rowText}>
+                <Text style={styles.rowTitle}>Apple Helse</Text>
+                <Text style={styles.rowSub}>
+                  Loggfør fullførte økter som mindful minutes (krever bygget app, ikke Expo Go)
+                </Text>
+              </View>
+              <Switch
+                value={state.healthSyncEnabled}
+                onValueChange={onHealthSyncToggle}
+                trackColor={{ false: '#333', true: `${Colors.greenAccent}88` }}
+                thumbColor={state.healthSyncEnabled ? Colors.greenAccent : '#888'}
+              />
+            </View>
+          </View>
+        </>
+      ) : null}
 
       <Text style={styles.sectionLabel}>Data</Text>
       <View style={styles.card}>

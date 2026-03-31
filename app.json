@@ -18,7 +18,14 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "no.biohead.app",
-      "buildNumber": "1"
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSHealthShareUsageDescription": "Biohead kan bruke Helse for å synkronisere mindful minutes når du velger det.",
+        "NSHealthUpdateUsageDescription": "Biohead lagrer mindful minutes i Apple Helse når du fullfører en pusteøkt (valgfritt)."
+      },
+      "entitlements": {
+        "com.apple.developer.healthkit": true
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -32,7 +39,8 @@
       "expo-router",
       "expo-font",
       "expo-av",
-      "expo-notifications"
+      "expo-notifications",
+      "@sentry/react-native"
     ],
     "experiments": {
       "typedRoutes": true

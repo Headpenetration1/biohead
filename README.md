@@ -8,16 +8,18 @@ En minimalistisk mobilapp for guidede pusteøvelser og mentale «reset»-økter,
 - **Varighet** 30–120 s, med **husket varighet per øvelse**
 - **Streak** og **økthistorikk** (kun lokalt på enheten)
 - **Onboarding** med valg av hovedmål (påvirker rekkefølge på forsiden)
-- **Favoritter** (hjerte på kort og øvelsesside)
+- **Favoritter**: egen seksjon på forsiden + hjerte på kort og øvelsesside
 - **Innstillinger**: haptikk, redusert bevegelse, **lyd** (av / korte signaler / ambient loop), **daglig påminnelse** (lokalt varsel), nullstill data
 - **Tilgjengelighet**: VoiceOver-label på pustesirkelen under økt
-- **Feilrapportering**: siste krasj lagres lokalt; bruker kan kontakte support fra feilskjerm
+- **Feilrapportering**: **Sentry** (valgfritt, via `EXPO_PUBLIC_SENTRY_DSN`) + lokal lagring + support-lenke på feilskjerm
+- **Apple Helse (iOS)**: valgfri logging av **mindful minutes** etter fullførte økter (krever bygget app med HealthKit, ikke Expo Go)
 
 ## Tech stack
 
 - **Expo SDK 54** · **TypeScript** (strict)
 - **expo-router** · **react-native-reanimated** · **react-native-svg**
 - **AsyncStorage** · **expo-haptics** · **expo-av** (lyd) · **expo-notifications** (påminnelse) · **expo-keep-awake** (økt)
+- **@sentry/react-native** · **react-native-health** (kun iOS / HealthKit)
 
 ## Kom i gang
 
@@ -38,6 +40,19 @@ unset CI && npx expo start
 npm test
 ```
 
+### Sentry (valgfritt)
+
+1. Opprett prosjekt på [sentry.io](https://sentry.io) og kopier **DSN** for React Native.
+2. Legg `EXPO_PUBLIC_SENTRY_DSN=<din-dsn>` i `.env` (se [.env.example](.env.example)).
+3. For EAS-bygg: legg samme variabel i **EAS Secrets** eller `eas.json` env for produksjon.
+4. Plugin `@sentry/react-native` i [app.json](app.json) støtter kildekart ved bygg; følg [Sentry Expo-dokumentasjon](https://docs.sentry.io/platforms/react-native/manual-setup/expo/) for org/prosjekt og auth token ved behov.
+
+### Apple Helse
+
+- Slå på under **Innstillinger → Integrasjoner → Apple Helse** (kun iOS).
+- Krever **development build** eller **EAS-build** med HealthKit-entitlements (ikke tilgjengelig i Expo Go).
+- Oppgi korrekt **App Privacy** i App Store Connect hvis du bruker Helse (data skrevet til Helse på enheten).
+
 ## Produksjonsbygg (EAS)
 
 1. Installer EAS CLI: `npm i -g eas-cli`
@@ -52,7 +67,7 @@ Se [eas.json](eas.json) for profiler (`development`, `preview`, `production`).
 
 - [ ] Apple Developer-konto, signeringsprofiler via EAS
 - [ ] App Store Connect: beskrivelse, nøkkelord, skjermbilder (påkrevd størrelser)
-- [ ] **App Privacy**: data lagres lokalt (AsyncStorage), ingen konto – besvar spørsmålene deretter
+- [ ] **App Privacy**: lokale data + ev. **Sentry** (krasj) + ev. **Apple Helse** (mindful minutes) – besvar i tråd med det du faktisk bruker
 - [ ] Aldersanbefaling og support-URL / personvern (om aktuelt)
 - [ ] TestFlight-runde før App Review
 
@@ -83,6 +98,8 @@ biohead/
 ├── context/AppContext.tsx
 ├── hooks/
 ├── utils/
+│   ├── initSentry.ts          # valgfri Sentry-init
+│   └── appleHealthMindful.ts  # iOS mindful minutes → Health
 └── __tests__/
 ```
 

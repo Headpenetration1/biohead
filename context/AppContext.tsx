@@ -34,6 +34,7 @@ type Action =
         reminderEnabled: boolean;
         reminderHour: number;
         reminderMinute: number;
+        healthSyncEnabled: boolean;
       }>;
     }
   | { type: 'SET_EXERCISE_DURATION'; payload: { exerciseId: string; duration: number } }
@@ -116,6 +117,7 @@ export type PreferenceUpdates = Partial<{
   reminderEnabled: boolean;
   reminderHour: number;
   reminderMinute: number;
+  healthSyncEnabled: boolean;
 }>;
 
 interface AppContextValue {
