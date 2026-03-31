@@ -16,6 +16,13 @@ import { Colors } from '@/constants/colors';
 import { Typography } from '@/constants/typography';
 import { exercises } from '@/constants/exercises';
 import { useAppContext } from '@/context/AppContext';
+import { useHaptics } from '@/hooks/useHaptics';
+import { getAdaptiveRecommendation } from '@/utils/recommendation';
+import {
+  getProgressionLevel,
+  getTotalMinutes,
+  getWeekMinutes,
+} from '@/utils/progression';
 import ExerciseCard from '@/components/ExerciseCard';
 import StreakBadge from '@/components/StreakBadge';
 
@@ -23,6 +30,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { state, toggleFavorite } = useAppContext();
+  const { light: hapticLight } = useHaptics(state.hapticsEnabled);
 
   const orb1TranslateY = useSharedValue(0);
   const orb2TranslateX = useSharedValue(0);
@@ -80,6 +88,29 @@ export default function HomeScreen() {
     if (state.favorites.length === 0) return sortedExercises;
     return sortedExercises.filter((e) => !favoriteSet.has(e.id));
   }, [sortedExercises, favoriteSet, state.favorites.length]);
+
+  const recommended = useMemo(() => {
+    const rec = getAdaptiveRecommendation({
+      sessions: state.sessions,
+      exercises,
+      goal: state.userGoal,
+    });
+    if (!rec) return null;
+    const exercise = exercises.find((entry) => entry.id === rec.exerciseId);
+    if (!exercise) return null;
+    return { ...rec, exercise };
+  }, [state.sessions, state.userGoal]);
+
+  const lastSessionExercise = useMemo(() => {
+    if (state.sessions.length === 0) return null;
+    const last = state.sessions[state.sessions.length - 1];
+    return exercises.find((e) => e.id === last.exerciseId) ?? null;
+  }, [state.sessions]);
+
+  const weekMinutes = useMemo(() => getWeekMinutes(state.sessions), [state.sessions]);
+  const totalMinutes = useMemo(() => getTotalMinutes(state.sessions), [state.sessions]);
+  const progression = useMemo(() => getProgressionLevel(totalMinutes), [totalMinutes]);
+  const weeklyCompletion = Math.min(weekMinutes / Math.max(1, state.weeklyGoalMinutes), 1);
 
   const showMainHeading = favoriteExercises.length > 0 && mainExercises.length > 0;
   const mainCardIndexOffset = favoriteExercises.length;
@@ -152,6 +183,78 @@ export default function HomeScreen() {
           ) : (
             <Text style={styles.greeting}>Hva trenger du nå?</Text>
           )}
+        </Animated.View>
+
+        {recommended ? (
+          <Animated.View entering={FadeInDown.delay(165).duration(500).springify()} style={styles.recoWrap}>
+            <Pressable
+              onPress={() => {
+                hapticLight();
+                router.push({
+                  pathname: '/exercise/[id]',
+                  params: { id: recommended.exercise.id },
+                });
+              }}
+              style={({ pressed }) => [
+                styles.recoCard,
+                { borderColor: `${recommended.exercise.glowColor}55` },
+                pressed && styles.resumeCardPressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={`Anbefalt nå: ${recommended.exercise.title}`}
+            >
+              <Text style={styles.recoKicker}>Anbefalt nå</Text>
+              <Text style={[styles.recoTitle, { color: recommended.exercise.glowColor }]}>
+                {recommended.exercise.title}
+              </Text>
+              <Text style={styles.recoSub}>{recommended.reason}</Text>
+            </Pressable>
+          </Animated.View>
+        ) : null}
+
+        {lastSessionExercise ? (
+          <Animated.View entering={FadeInDown.delay(180).duration(500).springify()} style={styles.resumeWrap}>
+            <Pressable
+              onPress={() => {
+                hapticLight();
+                router.push({
+                  pathname: '/exercise/[id]',
+                  params: { id: lastSessionExercise.id },
+                });
+              }}
+              style={({ pressed }) => [
+                styles.resumeCard,
+                { borderColor: `${lastSessionExercise.glowColor}55` },
+                pressed && styles.resumeCardPressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={`Fortsett med ${lastSessionExercise.title}`}
+            >
+              <Text style={styles.resumeKicker}>Sist du brukte</Text>
+              <Text style={[styles.resumeTitle, { color: lastSessionExercise.glowColor }]}>
+                {lastSessionExercise.title}
+              </Text>
+              <Text style={styles.resumeSub}>Åpne øvelsen · varighet som du har valgt</Text>
+            </Pressable>
+          </Animated.View>
+        ) : null}
+
+        <Animated.View entering={FadeInDown.delay(210).duration(500).springify()} style={styles.progressWrap}>
+          <View style={styles.progressCard}>
+            <View style={styles.progressHeaderRow}>
+              <Text style={styles.progressTitle}>Ukesmål</Text>
+              <Text style={styles.progressBadge}>Nivå {progression.level}</Text>
+            </View>
+            <Text style={styles.progressSub}>
+              {weekMinutes}/{state.weeklyGoalMinutes} min denne uken
+              {progression.nextTarget
+                ? ` · neste nivå ved ${progression.nextTarget} min totalt`
+                : ' · toppnivå nådd'}
+            </Text>
+            <View style={styles.progressBarTrack}>
+              <View style={[styles.progressBarFill, { width: `${weeklyCompletion * 100}%` }]} />
+            </View>
+          </View>
         </Animated.View>
 
         {favoriteExercises.length > 0 ? (
@@ -297,7 +400,116 @@ const styles = StyleSheet.create({
   },
   greetingContainer: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 20,
+  },
+  recoWrap: {
+    alignSelf: 'stretch',
+    marginBottom: 12,
+  },
+  recoCard: {
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+  },
+  recoKicker: {
+    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.sizes.xs,
+    color: Colors.textMuted,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  recoTitle: {
+    fontFamily: Typography.fontFamily.bold,
+    fontSize: Typography.sizes.lg,
+    marginBottom: 4,
+  },
+  recoSub: {
+    fontFamily: Typography.fontFamily.regular,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textSecondary,
+  },
+  resumeWrap: {
+    alignSelf: 'stretch',
+    marginBottom: 12,
+  },
+  resumeCard: {
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+  },
+  resumeCardPressed: {
+    opacity: 0.88,
+  },
+  resumeKicker: {
+    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.sizes.xs,
+    color: Colors.textMuted,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  resumeTitle: {
+    fontFamily: Typography.fontFamily.bold,
+    fontSize: Typography.sizes.lg,
+    marginBottom: 4,
+  },
+  resumeSub: {
+    fontFamily: Typography.fontFamily.regular,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textSecondary,
+  },
+  progressWrap: {
+    alignSelf: 'stretch',
+    marginBottom: 28,
+  },
+  progressCard: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    gap: 8,
+  },
+  progressHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  progressTitle: {
+    fontFamily: Typography.fontFamily.bold,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textPrimary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  progressBadge: {
+    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.sizes.xs,
+    color: Colors.greenAccent,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  progressSub: {
+    fontFamily: Typography.fontFamily.regular,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textSecondary,
+  },
+  progressBarTrack: {
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: Colors.greenAccent,
   },
   greetingHint: {
     fontFamily: Typography.fontFamily.semibold,

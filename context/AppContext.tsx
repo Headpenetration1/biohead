@@ -2,6 +2,7 @@ import React, { createContext, useContext, useReducer, useEffect, useCallback } 
 import type { AmbientSoundscape } from '@/constants/ambientSounds';
 import {
   AppData,
+  ReminderTime,
   SessionRecord,
   defaultAppData,
   loadAppData,
@@ -34,8 +35,10 @@ type Action =
         soundMode: SoundMode;
         ambientSoundscape: AmbientSoundscape;
         reminderEnabled: boolean;
-        reminderHour: number;
-        reminderMinute: number;
+        reminderTimes: ReminderTime[];
+        reminderQuietWeekends: boolean;
+        reminderSkipIfDoneToday: boolean;
+        weeklyGoalMinutes: number;
         healthSyncEnabled: boolean;
       }>;
     }
@@ -118,8 +121,10 @@ export type PreferenceUpdates = Partial<{
   soundMode: SoundMode;
   ambientSoundscape: AmbientSoundscape;
   reminderEnabled: boolean;
-  reminderHour: number;
-  reminderMinute: number;
+  reminderTimes: ReminderTime[];
+  reminderQuietWeekends: boolean;
+  reminderSkipIfDoneToday: boolean;
+  weeklyGoalMinutes: number;
   healthSyncEnabled: boolean;
 }>;
 
@@ -153,12 +158,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (state.isLoading) return;
-    void syncDailyReminder(state.reminderEnabled, state.reminderHour, state.reminderMinute);
+    void syncDailyReminder(state.reminderEnabled, state.reminderTimes, {
+      quietWeekends: state.reminderQuietWeekends,
+      skipIfDoneToday: state.reminderSkipIfDoneToday,
+      lastSessionDate: state.lastSessionDate,
+    });
   }, [
     state.isLoading,
     state.reminderEnabled,
-    state.reminderHour,
-    state.reminderMinute,
+    state.reminderTimes,
+    state.reminderQuietWeekends,
+    state.reminderSkipIfDoneToday,
+    state.lastSessionDate,
   ]);
 
   const completeSession = useCallback((exerciseId: string, duration: number) => {

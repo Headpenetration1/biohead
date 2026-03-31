@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import React, { useMemo, useCallback } from 'react';
+import { View, Text, ScrollView, Pressable, StyleSheet, Share, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -76,6 +76,24 @@ export default function HistoryScreen() {
     return ex ? { title: ex.title, count: max } : null;
   }, [exerciseCounts]);
 
+  const exportSessionsJson = useCallback(async () => {
+    if (state.sessions.length === 0) return;
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      app: 'biohead',
+      sessions: state.sessions,
+    };
+    const message = JSON.stringify(payload, null, 2);
+    try {
+      await Share.share({
+        title: 'Biohead økter',
+        message,
+      });
+    } catch {
+      Alert.alert('Kunne ikke dele', 'Prøv igjen senere.');
+    }
+  }, [state.sessions]);
+
   return (
     <ScrollView
       style={styles.container}
@@ -117,6 +135,18 @@ export default function HistoryScreen() {
       ) : (
         <Text style={styles.summary}>Fullfør en økt for å se statistikk her.</Text>
       )}
+
+      {state.sessions.length > 0 ? (
+        <Pressable
+          onPress={exportSessionsJson}
+          style={({ pressed }) => [styles.exportRow, pressed && styles.exportRowPressed]}
+          accessibilityRole="button"
+          accessibilityLabel="Eksporter øktlogg som tekst"
+        >
+          <Text style={styles.exportText}>Eksporter logg (JSON)</Text>
+          <Text style={styles.exportArrow}>›</Text>
+        </Pressable>
+      ) : null}
 
       <Text style={styles.sectionLabel}>Logg</Text>
       {grouped.length === 0 ? (
@@ -224,6 +254,30 @@ const styles = StyleSheet.create({
   summaryBold: {
     color: Colors.greenAccent,
     fontFamily: Typography.fontFamily.bold,
+  },
+  exportRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginBottom: 20,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  exportRowPressed: {
+    opacity: 0.85,
+  },
+  exportText: {
+    fontFamily: Typography.fontFamily.medium,
+    fontSize: Typography.sizes.base,
+    color: Colors.greenAccent,
+  },
+  exportArrow: {
+    fontSize: 22,
+    color: Colors.textMuted,
   },
   sectionLabel: {
     fontFamily: Typography.fontFamily.semibold,

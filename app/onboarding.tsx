@@ -75,6 +75,9 @@ export default function OnboardingScreen() {
           <Text style={styles.body}>
             Finn et rolig øyeblikk, velg en øvelse, og følg sirkelen. Alt lagres lokalt på enheten.
           </Text>
+          <Text style={styles.disclaimer}>
+            Biohead erstatter ikke profesjonell helsehjelp ved behov for behandling eller råd.
+          </Text>
           <HapticButton title="Start Biohead" onPress={finish} style={styles.cta} />
         </Animated.View>
       )}
@@ -110,6 +113,12 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.base,
     color: Colors.textSecondary,
     lineHeight: 24,
+  },
+  disclaimer: {
+    fontFamily: Typography.fontFamily.regular,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textMuted,
+    lineHeight: 20,
   },
   cta: {
     width: '100%',

@@ -67,17 +67,24 @@ export function useBreathingEngine({
     (currentElapsed: number) => {
       const posInCycle = currentElapsed % cycleDuration;
       let accumulated = 0;
+      let stepIndex = 0;
 
       for (const step of pattern) {
         if (posInCycle < accumulated + step.duration) {
           const phaseElapsed = posInCycle - accumulated;
           const progress = phaseElapsed / step.duration;
-          return { phase: step.phase, label: step.label, progress };
+          return { phase: step.phase, label: step.label, progress, stepIndex };
         }
         accumulated += step.duration;
+        stepIndex += 1;
       }
 
-      return { phase: pattern[0].phase, label: pattern[0].label, progress: 0 };
+      return {
+        phase: pattern[0].phase,
+        label: pattern[0].label,
+        progress: 0,
+        stepIndex: 0,
+      };
     },
     [pattern, cycleDuration]
   );
@@ -175,16 +182,16 @@ export function useBreathingEngine({
             return totalDuration;
           }
 
-          const { phase, label, progress } = computePhase(next);
-          const phaseKey = `${phase}-${Math.floor(next / cycleDuration)}`;
+          const { phase, label, progress, stepIndex } = computePhase(next);
+          const phaseKey = `${stepIndex}-${Math.floor(next / cycleDuration)}`;
 
           runOnJS(setBreathState)({ phase, label });
           runOnJS(setPhaseProgress)(progress);
 
-          // Kun start ny animasjon ved fasebytte
+          // Kun start ny animasjon ved nytt mønster-steg (inkl. gjentatt samme fase)
           if (phaseKey !== lastPhaseKey) {
             lastPhaseKey = phaseKey;
-            const step = pattern.find((p) => p.phase === phase);
+            const step = pattern[stepIndex];
             if (step) {
               animatePhase(phase, step.duration, 0);
             }
@@ -227,8 +234,8 @@ export function useBreathingEngine({
 
   const resume = useCallback(() => {
     setIsPaused(false);
-    const { phase, progress } = computePhase(elapsed);
-    const step = pattern.find((p) => p.phase === phase);
+    const { phase, progress, stepIndex } = computePhase(elapsed);
+    const step = pattern[stepIndex];
     if (step) animatePhase(phase, step.duration, progress);
   }, [elapsed, computePhase, pattern, animatePhase]);
 

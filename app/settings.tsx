@@ -16,7 +16,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { Colors } from '@/constants/colors';
 import { Typography } from '@/constants/typography';
 import { useAppContext } from '@/context/AppContext';
-import type { SoundMode } from '@/utils/storage';
+import type { ReminderTime, SoundMode } from '@/utils/storage';
 import { AMBIENT_SOUNDSCAPE_OPTIONS } from '@/constants/ambientSounds';
 import { requestNotificationPermission } from '@/utils/reminders';
 import { requestHealthKitMindfulAccess } from '@/utils/appleHealthMindful';
@@ -28,6 +28,8 @@ const REMINDER_PRESETS: { label: string; hour: number; minute: number }[] = [
   { label: '18:00', hour: 18, minute: 0 },
   { label: '21:00', hour: 21, minute: 0 },
 ];
+
+const WEEKLY_GOAL_PRESETS = [20, 40, 60, 90] as const;
 
 const SOUND_OPTIONS: { mode: SoundMode; label: string; sub: string }[] = [
   { mode: 'off', label: 'Av', sub: 'Kun stille og haptikk' },
@@ -43,6 +45,29 @@ export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { state, updatePreferences, resetData } = useAppContext();
+
+  const isReminderSelected = useCallback(
+    (target: ReminderTime) =>
+      state.reminderTimes.some(
+        (time) => time.hour === target.hour && time.minute === target.minute
+      ),
+    [state.reminderTimes]
+  );
+
+  const toggleReminderPreset = useCallback(
+    (target: ReminderTime) => {
+      const currentlySelected = isReminderSelected(target);
+      const next = currentlySelected
+        ? state.reminderTimes.filter(
+            (time) => !(time.hour === target.hour && time.minute === target.minute)
+          )
+        : [...state.reminderTimes, target];
+
+      const fallback = [{ hour: target.hour, minute: target.minute }];
+      updatePreferences({ reminderTimes: next.length > 0 ? next : fallback });
+    },
+    [isReminderSelected, state.reminderTimes, updatePreferences]
+  );
 
   const onHealthSyncToggle = useCallback(
     async (enabled: boolean) => {
@@ -216,17 +241,14 @@ export default function SettingsScreen() {
         {state.reminderEnabled ? (
           <>
             <View style={styles.divider} />
-            <Text style={styles.presetLabel}>Tidspunkt</Text>
+            <Text style={styles.presetLabel}>Tidspunkter (du kan velge flere)</Text>
             <View style={styles.presetRow}>
               {REMINDER_PRESETS.map((p) => {
-                const active =
-                  state.reminderHour === p.hour && state.reminderMinute === p.minute;
+                const active = isReminderSelected(p);
                 return (
                   <Pressable
                     key={p.label}
-                    onPress={() =>
-                      updatePreferences({ reminderHour: p.hour, reminderMinute: p.minute })
-                    }
+                    onPress={() => toggleReminderPreset(p)}
                     style={[styles.presetChip, active && styles.presetChipActive]}
                   >
                     <Text style={[styles.presetChipText, active && styles.presetChipTextActive]}>
@@ -236,8 +258,57 @@ export default function SettingsScreen() {
                 );
               })}
             </View>
+            <View style={styles.divider} />
+            <View style={styles.row}>
+              <View style={styles.rowText}>
+                <Text style={styles.rowTitle}>Stille helg</Text>
+                <Text style={styles.rowSub}>Sender bare påminnelser mandag–fredag</Text>
+              </View>
+              <Switch
+                value={state.reminderQuietWeekends}
+                onValueChange={(v) => updatePreferences({ reminderQuietWeekends: v })}
+                trackColor={{ false: '#333', true: `${Colors.greenAccent}88` }}
+                thumbColor={state.reminderQuietWeekends ? Colors.greenAccent : '#888'}
+              />
+            </View>
+            <View style={styles.divider} />
+            <View style={styles.row}>
+              <View style={styles.rowText}>
+                <Text style={styles.rowTitle}>Smart skip</Text>
+                <Text style={styles.rowSub}>
+                  Hopper over varsler resten av dagen når du allerede har fullført en økt
+                </Text>
+              </View>
+              <Switch
+                value={state.reminderSkipIfDoneToday}
+                onValueChange={(v) => updatePreferences({ reminderSkipIfDoneToday: v })}
+                trackColor={{ false: '#333', true: `${Colors.greenAccent}88` }}
+                thumbColor={state.reminderSkipIfDoneToday ? Colors.greenAccent : '#888'}
+              />
+            </View>
           </>
         ) : null}
+      </View>
+
+      <Text style={styles.sectionLabel}>Progresjon</Text>
+      <View style={styles.card}>
+        <Text style={styles.presetLabel}>Ukesmål (minutter)</Text>
+        <View style={styles.presetRow}>
+          {WEEKLY_GOAL_PRESETS.map((goal) => {
+            const active = state.weeklyGoalMinutes === goal;
+            return (
+              <Pressable
+                key={String(goal)}
+                onPress={() => updatePreferences({ weeklyGoalMinutes: goal })}
+                style={[styles.presetChip, active && styles.presetChipActive]}
+              >
+                <Text style={[styles.presetChipText, active && styles.presetChipTextActive]}>
+                  {goal} min
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
 
       {Platform.OS === 'ios' ? (
@@ -281,6 +352,9 @@ export default function SettingsScreen() {
         <View style={styles.divider} />
         <Text style={styles.legal}>
           Biohead lagrer streak og økter kun lokalt på enheten (AsyncStorage). Ingen konto kreves.
+          {'\n\n'}
+          Appen er et verktøy for egenomsorg og velvære, ikke medisinsk behandling eller diagnose.
+          Kontakt helsepersonell ved helseplager du er bekymret for.
         </Text>
       </View>
     </ScrollView>
