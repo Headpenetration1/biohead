@@ -1,8 +1,22 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  type AmbientSoundscape,
+  AMBIENT_SOUNDSCAPE_IDS,
+} from '@/constants/ambientSounds';
 
 const STORAGE_KEY = '@biohead_data';
 
 export type SoundMode = 'off' | 'cues' | 'ambient';
+
+function parseAmbientSoundscape(raw: unknown): AmbientSoundscape {
+  if (
+    typeof raw === 'string' &&
+    (AMBIENT_SOUNDSCAPE_IDS as readonly string[]).includes(raw)
+  ) {
+    return raw as AmbientSoundscape;
+  }
+  return 'wind';
+}
 
 export interface SessionRecord {
   id: string;
@@ -22,6 +36,8 @@ export interface AppData {
   hapticsEnabled: boolean;
   reduceMotion: boolean;
   soundMode: SoundMode;
+  /** Background loop when soundMode === 'ambient' */
+  ambientSoundscape: AmbientSoundscape;
   reminderEnabled: boolean;
   reminderHour: number;
   reminderMinute: number;
@@ -40,6 +56,7 @@ export const defaultAppData: AppData = {
   hapticsEnabled: true,
   reduceMotion: false,
   soundMode: 'off',
+  ambientSoundscape: 'wind',
   reminderEnabled: false,
   reminderHour: 9,
   reminderMinute: 0,
@@ -55,6 +72,7 @@ export async function loadAppData(): Promise<AppData> {
       return {
         ...defaultAppData,
         ...parsed,
+        ambientSoundscape: parseAmbientSoundscape(parsed.ambientSoundscape),
         favorites: parsed.favorites ?? defaultAppData.favorites,
         sessions: parsed.sessions ?? defaultAppData.sessions,
         exerciseDurationPrefs: {

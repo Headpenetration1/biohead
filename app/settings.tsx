@@ -17,6 +17,7 @@ import { Colors } from '@/constants/colors';
 import { Typography } from '@/constants/typography';
 import { useAppContext } from '@/context/AppContext';
 import type { SoundMode } from '@/utils/storage';
+import { AMBIENT_SOUNDSCAPE_OPTIONS } from '@/constants/ambientSounds';
 import { requestNotificationPermission } from '@/utils/reminders';
 import { requestHealthKitMindfulAccess } from '@/utils/appleHealthMindful';
 
@@ -31,7 +32,11 @@ const REMINDER_PRESETS: { label: string; hour: number; minute: number }[] = [
 const SOUND_OPTIONS: { mode: SoundMode; label: string; sub: string }[] = [
   { mode: 'off', label: 'Av', sub: 'Kun stille og haptikk' },
   { mode: 'cues', label: 'Signaler', sub: 'Korte toner ved fasebytte' },
-  { mode: 'ambient', label: 'Ambient', sub: 'Myk bakgrunnslyd under økt' },
+  {
+    mode: 'ambient',
+    label: 'Natur / ambient',
+    sub: 'Vind, fugler, regn m.m. under økt (velg nedenfor)',
+  },
 ];
 
 export default function SettingsScreen() {
@@ -162,6 +167,36 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
         ))}
+        {state.soundMode === 'ambient' ? (
+          <>
+            <View style={styles.divider} />
+            <Text style={styles.presetLabel}>Naturlig bakgrunn</Text>
+            <View style={styles.soundscapeList}>
+              {AMBIENT_SOUNDSCAPE_OPTIONS.map((opt) => {
+                const active = state.ambientSoundscape === opt.id;
+                return (
+                  <Pressable
+                    key={opt.id}
+                    onPress={() => updatePreferences({ ambientSoundscape: opt.id })}
+                    style={[styles.soundscapeChip, active && styles.soundscapeChipActive]}
+                  >
+                    <Text
+                      style={[
+                        styles.soundscapeTitle,
+                        active && styles.soundscapeTitleActive,
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                    <Text style={styles.soundscapeSub} numberOfLines={2}>
+                      {opt.sub}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </>
+        ) : null}
       </View>
 
       <Text style={styles.sectionLabel}>Påminnelse</Text>
@@ -386,6 +421,38 @@ const styles = StyleSheet.create({
   },
   presetChipTextActive: {
     color: Colors.greenAccent,
+  },
+  soundscapeList: {
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+  },
+  soundscapeChip: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    gap: 4,
+  },
+  soundscapeChipActive: {
+    borderColor: Colors.greenAccent,
+    backgroundColor: `${Colors.greenAccent}18`,
+  },
+  soundscapeTitle: {
+    fontFamily: Typography.fontFamily.bold,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textPrimary,
+  },
+  soundscapeTitleActive: {
+    color: Colors.greenAccent,
+  },
+  soundscapeSub: {
+    fontFamily: Typography.fontFamily.regular,
+    fontSize: 11,
+    color: Colors.textMuted,
+    lineHeight: 15,
   },
   dangerRow: {
     paddingVertical: 16,

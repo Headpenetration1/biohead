@@ -2,11 +2,15 @@ import { useEffect, useRef, useCallback } from 'react';
 import { Audio, type AVPlaybackStatus } from 'expo-av';
 import type { SoundMode } from '@/utils/storage';
 import type { BreathingPhase } from '@/constants/exercises';
+import {
+  type AmbientSoundscape,
+  AMBIENT_SOUND_MODULES,
+  AMBIENT_SOUND_VOLUMES,
+} from '@/constants/ambientSounds';
 
 const inhaleCue = require('@/assets/sounds/cue_inhale.wav');
 const exhaleCue = require('@/assets/sounds/cue_exhale.wav');
 const holdCue = require('@/assets/sounds/cue_hold.wav');
-const ambientLoop = require('@/assets/sounds/ambient_loop.wav');
 
 let audioModeReady = false;
 
@@ -23,6 +27,7 @@ async function ensureAudioMode(): Promise<void> {
 
 export function useBreathAudio(
   soundMode: SoundMode,
+  ambientSoundscape: AmbientSoundscape,
   isSessionActive: boolean,
   isPaused: boolean,
   currentPhase: BreathingPhase
@@ -78,9 +83,11 @@ export function useBreathAudio(
       await unloadAmbient();
       if (cancelled) return;
       try {
+        const module = AMBIENT_SOUND_MODULES[ambientSoundscape];
+        const volume = AMBIENT_SOUND_VOLUMES[ambientSoundscape];
         const { sound } = await Audio.Sound.createAsync(
-          ambientLoop,
-          { isLooping: true, volume: 0.35 },
+          module,
+          { isLooping: true, volume },
           (status: AVPlaybackStatus) => {
             if (!status.isLoaded && 'error' in status && status.error) {
               console.warn('Ambient audio error', status.error);
@@ -102,7 +109,7 @@ export function useBreathAudio(
       cancelled = true;
       void unloadAmbient();
     };
-  }, [soundMode, isSessionActive, isPaused, unloadAmbient]);
+  }, [soundMode, ambientSoundscape, isSessionActive, isPaused, unloadAmbient]);
 
   // Phase cues
   useEffect(() => {

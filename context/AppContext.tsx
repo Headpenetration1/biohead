@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
+import type { AmbientSoundscape } from '@/constants/ambientSounds';
 import {
   AppData,
   SessionRecord,
@@ -31,6 +32,7 @@ type Action =
         hapticsEnabled: boolean;
         reduceMotion: boolean;
         soundMode: SoundMode;
+        ambientSoundscape: AmbientSoundscape;
         reminderEnabled: boolean;
         reminderHour: number;
         reminderMinute: number;
@@ -114,6 +116,7 @@ export type PreferenceUpdates = Partial<{
   hapticsEnabled: boolean;
   reduceMotion: boolean;
   soundMode: SoundMode;
+  ambientSoundscape: AmbientSoundscape;
   reminderEnabled: boolean;
   reminderHour: number;
   reminderMinute: number;

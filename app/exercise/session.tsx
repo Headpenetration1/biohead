@@ -43,7 +43,13 @@ export default function SessionScreen() {
 
   const sessionActive = engine.isActive && !isComplete;
 
-  useBreathAudio(state.soundMode, sessionActive, engine.isPaused, engine.currentPhase);
+  useBreathAudio(
+    state.soundMode,
+    state.ambientSoundscape,
+    sessionActive,
+    engine.isPaused,
+    engine.currentPhase
+  );
 
   useEffect(() => {
     if (exercise && !engine.isActive && !isComplete) {

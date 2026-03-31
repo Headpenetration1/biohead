@@ -9,7 +9,17 @@ export interface BreathingPattern {
 }
 
 export interface Exercise {
-  id: 'calm' | 'focus' | 'energy' | 'sleep' | 'balance' | 'destress';
+  id:
+    | 'calm'
+    | 'focus'
+    | 'energy'
+    | 'sleep'
+    | 'balance'
+    | 'destress'
+    | 'triangle'
+    | 'slow'
+    | 'deepSigh'
+    | 'stretch';
   title: string;
   subtitle: string;
   description: string;
@@ -114,6 +124,69 @@ export const exercises: Exercise[] = [
     ],
     technique: 'Physiological sigh',
     defaultDuration: 60,
+  },
+  {
+    id: 'triangle',
+    title: 'Trekant',
+    subtitle: 'Tre like steg',
+    description:
+      'Klassisk trekantpust: like lang inn-pust, pause og ut-pust. Enkel å huske og fin for å lande i nået.',
+    icon: 'Triangle',
+    glowColor: Colors.triangleGlow,
+    pattern: [
+      { phase: 'inhale', duration: 4, label: 'Pust inn' },
+      { phase: 'hold', duration: 4, label: 'Hold' },
+      { phase: 'exhale', duration: 4, label: 'Pust ut' },
+    ],
+    technique: 'Trekantpust 4-4-4',
+    defaultDuration: 60,
+  },
+  {
+    id: 'slow',
+    title: 'Sakte',
+    subtitle: 'Senk tempoet',
+    description:
+      'Lengre, jevne sykluser som gir kroppen mer tid per åndedrag – godt når du vil roe nervesystemet ekstra forsiktig.',
+    icon: 'Hourglass',
+    glowColor: Colors.slowGlow,
+    pattern: [
+      { phase: 'inhale', duration: 6, label: 'Pust inn' },
+      { phase: 'exhale', duration: 6, label: 'Pust ut' },
+    ],
+    technique: 'Sakte jevn pust',
+    defaultDuration: 90,
+  },
+  {
+    id: 'deepSigh',
+    title: 'Dyp sukk',
+    subtitle: 'Dobbelt inn, lang ut',
+    description:
+      'Kort inn-pust, et lite «påfyll» mens lungene er fulle, og deretter en lang ut-pust – inspirert av cyclic sigh for rask nedregulering.',
+    icon: 'Heart',
+    glowColor: Colors.deepSighGlow,
+    pattern: [
+      { phase: 'inhale', duration: 2, label: 'Pust inn' },
+      { phase: 'hold', duration: 2, label: 'Litt til' },
+      { phase: 'exhale', duration: 8, label: 'Pust ut langt' },
+    ],
+    technique: 'Cyclic sigh',
+    defaultDuration: 60,
+  },
+  {
+    id: 'stretch',
+    title: 'Lang ut',
+    subtitle: 'Myk mage og bryst',
+    description:
+      'Ro inn-pust, kort pause, og en ekstra lang ut-pust som inviterer skuldre og kjever til å slippe.',
+    icon: 'Expand',
+    glowColor: Colors.stretchGlow,
+    pattern: [
+      { phase: 'inhale', duration: 5, label: 'Pust inn' },
+      { phase: 'hold', duration: 2, label: 'Myk pause' },
+      { phase: 'exhale', duration: 10, label: 'Pust ut sakte' },
+    ],
+    technique: 'Lang utpust',
+    defaultDuration: 90,
   },
 ];
 

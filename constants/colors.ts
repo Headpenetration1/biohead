@@ -22,6 +22,10 @@ export const Colors = {
   sleepGlow: '#818CF8',   // Soft Indigo
   balanceGlow: '#10B981', // Vibrant Mint
   destressGlow: '#F43F5E',// Sunset Coral
+  triangleGlow: '#A78BFA', // Soft violet
+  slowGlow: '#38BDF8',     // Sky blue
+  deepSighGlow: '#FB7185', // Rose
+  stretchGlow: '#C084FC',  // Bright purple
 
   // System
   error: '#FF2A55',       // Vibrant error red
