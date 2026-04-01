@@ -23,6 +23,16 @@ export function getWeekMinutes(sessions: SessionRecord[], now = new Date()): num
   );
 }
 
+export function getWeekSessionCount(sessions: SessionRecord[], now = new Date()): number {
+  const start = weekStartDate(now).getTime();
+  const end = start + 7 * 24 * 60 * 60 * 1000;
+  return sessions.reduce((sum, session) => {
+    const ts = new Date(session.completedAt).getTime();
+    if (ts < start || ts >= end) return sum;
+    return sum + 1;
+  }, 0);
+}
+
 export function getTotalMinutes(sessions: SessionRecord[]): number {
   return Math.round(sessions.reduce((sum, session) => sum + session.duration / 60, 0));
 }

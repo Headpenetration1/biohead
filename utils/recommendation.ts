@@ -1,5 +1,5 @@
 import type { Exercise } from '@/constants/exercises';
-import type { SessionRecord } from '@/utils/storage';
+import type { OnboardingProfile, SessionRecord } from '@/utils/storage';
 
 type Goal = 'calm' | 'focus' | 'energy' | undefined;
 
@@ -8,6 +8,7 @@ interface RecommendationInput {
   exercises: Exercise[];
   goal: Goal;
   stressLevel?: number;
+  onboardingProfile?: OnboardingProfile;
   now?: Date;
 }
 
@@ -30,6 +31,7 @@ export function getAdaptiveRecommendation({
   exercises,
   goal,
   stressLevel,
+  onboardingProfile,
   now = new Date(),
 }: RecommendationInput): ExerciseRecommendation | null {
   if (exercises.length === 0) return null;
@@ -50,6 +52,21 @@ export function getAdaptiveRecommendation({
       exerciseId: pickExisting(exercises, 'focus', 'energy'),
       reason: 'Lavt stress + dagtid: utnytt momentum med fokusert pust.',
     };
+  }
+
+  if (onboardingProfile && totalSessions < 8) {
+    if (onboardingProfile.sleepQuality <= 2) {
+      return {
+        exerciseId: pickExisting(exercises, 'sleep', 'calm'),
+        reason: 'Oppstartsplan: ekstra støtte for restitusjon og søvnkvalitet.',
+      };
+    }
+    if (onboardingProfile.focusNeed >= 4) {
+      return {
+        exerciseId: pickExisting(exercises, 'focus', 'balance'),
+        reason: 'Oppstartsplan: prioriterer fokus tidlig i vaneperioden.',
+      };
+    }
   }
 
   if (hour >= 21 || hour < 6) {

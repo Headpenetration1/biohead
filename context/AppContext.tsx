@@ -1,13 +1,14 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
 import {
   AMBIENT_SOUNDSCAPE_IDS,
-  type AmbientMix,
   type AmbientSoundscape,
+  type AmbientMix,
 } from '@/constants/ambientSounds';
 import { getProgramById, type ProgramId } from '@/constants/programs';
 import {
   type AmbientMixPreset,
   AppData,
+  type OnboardingProfile,
   ReminderTime,
   type SavedSession,
   SessionRecord,
@@ -40,7 +41,14 @@ type Action =
     }
   | { type: 'RATE_LAST_SESSION'; payload: number }
   | { type: 'TOGGLE_FAVORITE'; payload: string }
-  | { type: 'COMPLETE_ONBOARDING'; payload?: 'calm' | 'focus' | 'energy' }
+  | {
+      type: 'COMPLETE_ONBOARDING';
+      payload?: {
+        goal?: 'calm' | 'focus' | 'energy';
+        profile?: OnboardingProfile;
+        starterProgramId?: ProgramId;
+      };
+    }
   | { type: 'START_PROGRAM'; payload: ProgramId }
   | { type: 'SAVE_AMBIENT_PRESET'; payload?: { name?: string } }
   | { type: 'APPLY_AMBIENT_PRESET'; payload: string }
@@ -63,9 +71,11 @@ type Action =
         ambientMixPresets: AmbientMixPreset[];
         reminderEnabled: boolean;
         reminderTimes: ReminderTime[];
+        reminderAdaptiveEnabled: boolean;
         reminderQuietWeekends: boolean;
         reminderSkipIfDoneToday: boolean;
         weeklyGoalMinutes: number;
+        weeklySessionGoal: number;
         healthSyncEnabled: boolean;
       }>;
     }
@@ -94,6 +104,7 @@ function reducer(state: AppState, action: Action): AppState {
         duration: action.payload.duration,
         completedAt: new Date().toISOString(),
         stressBefore: action.payload.stressBefore,
+        ambientSoundscape: state.soundMode === 'ambient' ? state.ambientSoundscape : undefined,
       };
 
       return {
@@ -155,7 +166,17 @@ function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         hasCompletedOnboarding: true,
-        userGoal: action.payload,
+        userGoal: action.payload?.goal,
+        onboardingProfile: action.payload?.profile,
+        activeProgram:
+          action.payload?.starterProgramId && !state.activeProgram
+            ? {
+                id: action.payload.starterProgramId,
+                currentDay: 1,
+                completedDays: 0,
+                lastCompletedDate: undefined,
+              }
+            : state.activeProgram,
       };
 
     case 'START_PROGRAM':
@@ -269,9 +290,11 @@ export type PreferenceUpdates = Partial<{
   ambientMixPresets: AmbientMixPreset[];
   reminderEnabled: boolean;
   reminderTimes: ReminderTime[];
+  reminderAdaptiveEnabled: boolean;
   reminderQuietWeekends: boolean;
   reminderSkipIfDoneToday: boolean;
   weeklyGoalMinutes: number;
+  weeklySessionGoal: number;
   healthSyncEnabled: boolean;
 }>;
 
@@ -280,7 +303,11 @@ interface AppContextValue {
   completeSession: (exerciseId: string, duration: number, stressBefore?: number) => void;
   rateLastSession: (effectScore: number) => void;
   toggleFavorite: (exerciseId: string) => void;
-  completeOnboarding: (goal?: 'calm' | 'focus' | 'energy') => void;
+  completeOnboarding: (payload?: {
+    goal?: 'calm' | 'focus' | 'energy';
+    profile?: OnboardingProfile;
+    starterProgramId?: ProgramId;
+  }) => void;
   startProgram: (programId: ProgramId) => void;
   saveAmbientPreset: (name?: string) => void;
   applyAmbientPreset: (presetId: string) => void;
@@ -320,6 +347,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (state.isLoading) return;
     void syncDailyReminder(state.reminderEnabled, state.reminderTimes, {
+      adaptiveEnabled: state.reminderAdaptiveEnabled,
+      sessions: state.sessions,
       quietWeekends: state.reminderQuietWeekends,
       skipIfDoneToday: state.reminderSkipIfDoneToday,
       lastSessionDate: state.lastSessionDate,
@@ -328,6 +357,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     state.isLoading,
     state.reminderEnabled,
     state.reminderTimes,
+    state.reminderAdaptiveEnabled,
+    state.sessions,
     state.reminderQuietWeekends,
     state.reminderSkipIfDoneToday,
     state.lastSessionDate,
@@ -350,9 +381,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'TOGGLE_FAVORITE', payload: exerciseId });
   }, []);
 
-  const completeOnboarding = useCallback((goal?: 'calm' | 'focus' | 'energy') => {
-    dispatch({ type: 'COMPLETE_ONBOARDING', payload: goal });
-  }, []);
+  const completeOnboarding = useCallback(
+    (payload?: {
+      goal?: 'calm' | 'focus' | 'energy';
+      profile?: OnboardingProfile;
+      starterProgramId?: ProgramId;
+    }) => {
+      dispatch({ type: 'COMPLETE_ONBOARDING', payload });
+    },
+    []
+  );
 
   const startProgram = useCallback((programId: ProgramId) => {
     dispatch({ type: 'START_PROGRAM', payload: programId });

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet, Image, Pressable } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Image, Pressable, Share, Alert } from 'react-native';
 import { useRouter, Redirect, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -22,6 +22,7 @@ import { getAdaptiveRecommendation } from '@/utils/recommendation';
 import {
   getProgressionLevel,
   getTotalMinutes,
+  getWeekSessionCount,
   getWeekMinutes,
 } from '@/utils/progression';
 import ExerciseCard from '@/components/ExerciseCard';
@@ -96,12 +97,13 @@ export default function HomeScreen() {
       exercises,
       goal: state.userGoal,
       stressLevel: state.stressCheck?.level,
+      onboardingProfile: state.onboardingProfile,
     });
     if (!rec) return null;
     const exercise = exercises.find((entry) => entry.id === rec.exerciseId);
     if (!exercise) return null;
     return { ...rec, exercise };
-  }, [state.sessions, state.userGoal]);
+  }, [state.sessions, state.userGoal, state.stressCheck?.level, state.onboardingProfile]);
 
   const lastSessionExercise = useMemo(() => {
     if (state.sessions.length === 0) return null;
@@ -110,9 +112,11 @@ export default function HomeScreen() {
   }, [state.sessions]);
 
   const weekMinutes = useMemo(() => getWeekMinutes(state.sessions), [state.sessions]);
+  const weekSessions = useMemo(() => getWeekSessionCount(state.sessions), [state.sessions]);
   const totalMinutes = useMemo(() => getTotalMinutes(state.sessions), [state.sessions]);
   const progression = useMemo(() => getProgressionLevel(totalMinutes), [totalMinutes]);
   const weeklyCompletion = Math.min(weekMinutes / Math.max(1, state.weeklyGoalMinutes), 1);
+  const weeklySessionCompletion = Math.min(weekSessions / Math.max(1, state.weeklySessionGoal), 1);
   const activeProgram = useMemo(() => getProgramById(state.activeProgram?.id), [state.activeProgram?.id]);
   const activeProgramDay = useMemo(() => {
     if (!activeProgram || !state.activeProgram) return undefined;
@@ -346,6 +350,17 @@ export default function HomeScreen() {
             <View style={styles.progressBarTrack}>
               <View style={[styles.progressBarFill, { width: `${weeklyCompletion * 100}%` }]} />
             </View>
+            <Text style={styles.progressSub}>
+              {weekSessions}/{state.weeklySessionGoal} økter denne uken
+            </Text>
+            <View style={styles.progressBarTrack}>
+              <View
+                style={[
+                  styles.progressBarFillSecondary,
+                  { width: `${weeklySessionCompletion * 100}%` },
+                ]}
+              />
+            </View>
           </View>
         </Animated.View>
 
@@ -446,6 +461,23 @@ export default function HomeScreen() {
                 {state.longestStreak > 0 ? ` · rekord ${state.longestStreak} dager` : ''}
               </Text>
             </View>
+            <Pressable
+              onPress={async () => {
+                try {
+                  await Share.share({
+                    title: 'Biohead milepæl',
+                    message: `Jeg har fullført ${state.sessions.length} Biohead-økter, ${totalMinutes} minutter totalt, og er på nivå ${progression.level}.`,
+                  });
+                } catch {
+                  Alert.alert('Kunne ikke dele', 'Prøv igjen om et øyeblikk.');
+                }
+              }}
+              style={styles.shareMilestoneBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Del milepæl"
+            >
+              <Text style={styles.shareMilestoneText}>Del milepæl</Text>
+            </Pressable>
           </Animated.View>
         )}
       </ScrollView>
@@ -737,6 +769,11 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: Colors.greenAccent,
   },
+  progressBarFillSecondary: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: `${Colors.focusGlow}CC`,
+  },
   programWrap: {
     alignSelf: 'stretch',
     marginBottom: 24,
@@ -840,6 +877,7 @@ const styles = StyleSheet.create({
   counterContainer: {
     alignItems: 'center',
     marginTop: 40,
+    gap: 10,
   },
   counterPill: {
     paddingVertical: 8,
@@ -856,5 +894,18 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     textTransform: 'uppercase',
     textAlign: 'center',
+  },
+  shareMilestoneBtn: {
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    borderRadius: 99,
+    borderWidth: 1,
+    borderColor: `${Colors.greenAccent}66`,
+    backgroundColor: `${Colors.greenAccent}18`,
+  },
+  shareMilestoneText: {
+    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.sizes.sm,
+    color: Colors.greenAccent,
   },
 });

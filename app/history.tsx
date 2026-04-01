@@ -6,6 +6,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { Colors } from '@/constants/colors';
 import { Typography } from '@/constants/typography';
 import { exercises } from '@/constants/exercises';
+import { AMBIENT_SOUNDSCAPE_OPTIONS } from '@/constants/ambientSounds';
 import { useAppContext } from '@/context/AppContext';
 import { getBestTimeBucket, getLast7DayTrend } from '@/utils/historyInsights';
 
@@ -96,6 +97,47 @@ export default function HistoryScreen() {
       0
     );
     return total / paired.length;
+  }, [state.sessions]);
+  const bestEffectExercises = useMemo(() => {
+    const scores = new Map<string, { total: number; count: number }>();
+    for (const session of state.sessions) {
+      if (typeof session.effectScore !== 'number') continue;
+      const current = scores.get(session.exerciseId) ?? { total: 0, count: 0 };
+      scores.set(session.exerciseId, { total: current.total + session.effectScore, count: current.count + 1 });
+    }
+    return [...scores.entries()]
+      .map(([id, value]) => {
+        const exercise = exercises.find((entry) => entry.id === id);
+        if (!exercise) return null;
+        return {
+          id,
+          title: exercise.title,
+          avg: value.total / value.count,
+          count: value.count,
+        };
+      })
+      .filter((entry): entry is { id: string; title: string; avg: number; count: number } => entry != null)
+      .sort((a, b) => b.avg - a.avg)
+      .slice(0, 3);
+  }, [state.sessions]);
+  const bestEffectSoundscape = useMemo(() => {
+    const scores = new Map<string, { total: number; count: number }>();
+    for (const session of state.sessions) {
+      if (typeof session.effectScore !== 'number' || !session.ambientSoundscape) continue;
+      const key = session.ambientSoundscape;
+      const current = scores.get(key) ?? { total: 0, count: 0 };
+      scores.set(key, { total: current.total + session.effectScore, count: current.count + 1 });
+    }
+    const best = [...scores.entries()]
+      .map(([soundscape, value]) => ({
+        soundscape,
+        avg: value.total / value.count,
+        count: value.count,
+      }))
+      .sort((a, b) => b.avg - a.avg)[0];
+    if (!best) return null;
+    const label = AMBIENT_SOUNDSCAPE_OPTIONS.find((entry) => entry.id === best.soundscape)?.label ?? best.soundscape;
+    return { ...best, label };
   }, [state.sessions]);
 
   const exportSessionsJson = useCallback(async () => {
@@ -210,6 +252,29 @@ export default function HistoryScreen() {
                 Endring mot stress før økt: {avgStressDelta > 0 ? '-' : '+'}
                 {Math.abs(avgStressDelta).toFixed(1)}
               </Text>
+            ) : null}
+          </View>
+          <View style={styles.insightCard}>
+            <Text style={styles.insightTitle}>Best effekt per øvelse</Text>
+            {bestEffectExercises.length === 0 ? (
+              <Text style={styles.insightSub}>Sett effekt-score etter økter for å få innsikt.</Text>
+            ) : (
+              bestEffectExercises.map((entry) => (
+                <Text key={entry.id} style={styles.insightSub}>
+                  {entry.title}: {entry.avg.toFixed(1)}/5 ({entry.count} økter)
+                </Text>
+              ))
+            )}
+          </View>
+          <View style={styles.insightCard}>
+            <Text style={styles.insightTitle}>Miks med høyest effekt</Text>
+            <Text style={styles.insightBody}>
+              {bestEffectSoundscape
+                ? `${bestEffectSoundscape.label} (${bestEffectSoundscape.avg.toFixed(1)}/5)`
+                : 'Ingen ambient-data enda'}
+            </Text>
+            {bestEffectSoundscape ? (
+              <Text style={styles.insightSub}>{bestEffectSoundscape.count} økter med score</Text>
             ) : null}
           </View>
         </>

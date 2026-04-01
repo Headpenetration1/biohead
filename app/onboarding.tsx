@@ -7,6 +7,7 @@ import { Colors } from '@/constants/colors';
 import { Typography } from '@/constants/typography';
 import { useAppContext } from '@/context/AppContext';
 import HapticButton from '@/components/HapticButton';
+import type { ProgramId } from '@/constants/programs';
 
 const GOALS = [
   { id: 'calm' as const, title: 'Ro og nedstemthet', subtitle: 'Senke stress og finne ro' },
@@ -20,9 +21,28 @@ export default function OnboardingScreen() {
   const { completeOnboarding } = useAppContext();
   const [step, setStep] = useState(0);
   const [selectedGoal, setSelectedGoal] = useState<'calm' | 'focus' | 'energy' | null>(null);
+  const [stressLevel, setStressLevel] = useState(3);
+  const [sleepQuality, setSleepQuality] = useState(3);
+  const [focusNeed, setFocusNeed] = useState(3);
+
+  const computedGoal: 'calm' | 'focus' | 'energy' = (() => {
+    if (stressLevel >= 4 || sleepQuality <= 2) return 'calm';
+    if (focusNeed >= 4) return 'focus';
+    return 'energy';
+  })();
+  const finalGoal = selectedGoal ?? computedGoal;
+  const starterProgramId: ProgramId = (() => {
+    if (sleepQuality <= 2) return 'sleep7';
+    if (finalGoal === 'focus') return 'focus7';
+    return 'calm7';
+  })();
 
   const finish = () => {
-    completeOnboarding(selectedGoal ?? undefined);
+    completeOnboarding({
+      goal: finalGoal,
+      profile: { stressLevel, sleepQuality, focusNeed },
+      starterProgramId,
+    });
     router.replace('/');
   };
 
@@ -41,7 +61,7 @@ export default function OnboardingScreen() {
 
       {step === 1 && (
         <Animated.View entering={FadeInDown.duration(450)} style={styles.section}>
-          <Text style={styles.kicker}>Steg 2 av 3</Text>
+          <Text style={styles.kicker}>Steg 2 av 4</Text>
           <Text style={styles.title}>Hva trenger du mest?</Text>
           <Text style={styles.body}>Vi tilpasser forsiden etter valget ditt (du kan endre det senere).</Text>
           <View style={styles.goalList}>
@@ -70,9 +90,65 @@ export default function OnboardingScreen() {
 
       {step === 2 && (
         <Animated.View entering={FadeInDown.duration(450)} style={styles.section}>
-          <Text style={styles.kicker}>Steg 3 av 3</Text>
+          <Text style={styles.kicker}>Steg 3 av 4</Text>
+          <Text style={styles.title}>Rask stress-sjekk</Text>
+          <Text style={styles.body}>Dette hjelper oss foresla rett oppstartsplan for deg.</Text>
+          <View style={styles.quizGroup}>
+            <Text style={styles.quizLabel}>Stress nå (1-5)</Text>
+            <View style={styles.scaleRow}>
+              {[1, 2, 3, 4, 5].map((value) => (
+                <Pressable
+                  key={`stress-${value}`}
+                  onPress={() => setStressLevel(value)}
+                  style={[styles.scaleChip, stressLevel === value && styles.scaleChipActive]}
+                >
+                  <Text style={[styles.scaleChipText, stressLevel === value && styles.scaleChipTextActive]}>
+                    {value}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            <Text style={styles.quizLabel}>Søvnkvalitet i natt (1-5)</Text>
+            <View style={styles.scaleRow}>
+              {[1, 2, 3, 4, 5].map((value) => (
+                <Pressable
+                  key={`sleep-${value}`}
+                  onPress={() => setSleepQuality(value)}
+                  style={[styles.scaleChip, sleepQuality === value && styles.scaleChipActive]}
+                >
+                  <Text style={[styles.scaleChipText, sleepQuality === value && styles.scaleChipTextActive]}>
+                    {value}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            <Text style={styles.quizLabel}>Behov for fokus i dag (1-5)</Text>
+            <View style={styles.scaleRow}>
+              {[1, 2, 3, 4, 5].map((value) => (
+                <Pressable
+                  key={`focus-${value}`}
+                  onPress={() => setFocusNeed(value)}
+                  style={[styles.scaleChip, focusNeed === value && styles.scaleChipActive]}
+                >
+                  <Text style={[styles.scaleChipText, focusNeed === value && styles.scaleChipTextActive]}>
+                    {value}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+          <HapticButton title="Se anbefaling" onPress={() => setStep(3)} style={styles.cta} />
+        </Animated.View>
+      )}
+
+      {step === 3 && (
+        <Animated.View entering={FadeInDown.duration(450)} style={styles.section}>
+          <Text style={styles.kicker}>Steg 4 av 4</Text>
           <Text style={styles.title}>Du er klar</Text>
           <Text style={styles.body}>
+            Startforslag: <Text style={styles.recoInline}>{finalGoal}</Text> + program{' '}
+            <Text style={styles.recoInline}>{starterProgramId}</Text>.
+            {'\n\n'}
             Finn et rolig øyeblikk, velg en øvelse, og følg sirkelen. Alt lagres lokalt på enheten.
           </Text>
           <Text style={styles.disclaimer}>
@@ -151,5 +227,41 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.regular,
     fontSize: Typography.sizes.sm,
     color: Colors.textSecondary,
+  },
+  quizGroup: {
+    gap: 12,
+  },
+  quizLabel: {
+    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textPrimary,
+  },
+  scaleRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  scaleChip: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: 'rgba(14,32,37,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scaleChipActive: {
+    borderColor: `${Colors.greenAccent}88`,
+    backgroundColor: `${Colors.greenAccent}20`,
+  },
+  scaleChipText: {
+    fontFamily: Typography.fontFamily.semibold,
+    color: Colors.textSecondary,
+  },
+  scaleChipTextActive: {
+    color: Colors.greenAccent,
+  },
+  recoInline: {
+    fontFamily: Typography.fontFamily.bold,
+    color: Colors.greenAccent,
   },
 });

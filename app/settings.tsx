@@ -39,6 +39,7 @@ const REMINDER_PRESETS: { label: string; hour: number; minute: number }[] = [
 ];
 
 const WEEKLY_GOAL_PRESETS = [20, 40, 60, 90] as const;
+const WEEKLY_SESSION_GOAL_PRESETS = [3, 5, 7, 10] as const;
 
 const SOUND_OPTIONS: { mode: SoundMode; label: string; sub: string }[] = [
   { mode: 'off', label: 'Av', sub: 'Kun stille og haptikk' },
@@ -530,6 +531,21 @@ export default function SettingsScreen() {
             <View style={styles.divider} />
             <View style={styles.row}>
               <View style={styles.rowText}>
+                <Text style={styles.rowTitle}>Adaptive tidspunkt</Text>
+                <Text style={styles.rowSub}>
+                  Foreslår påminnelser basert på når du vanligvis gjennomfører økter
+                </Text>
+              </View>
+              <Switch
+                value={state.reminderAdaptiveEnabled}
+                onValueChange={(v) => updatePreferences({ reminderAdaptiveEnabled: v })}
+                trackColor={{ false: '#333', true: `${Colors.greenAccent}88` }}
+                thumbColor={state.reminderAdaptiveEnabled ? Colors.greenAccent : '#888'}
+              />
+            </View>
+            <View style={styles.divider} />
+            <View style={styles.row}>
+              <View style={styles.rowText}>
                 <Text style={styles.rowTitle}>Smart skip</Text>
                 <Text style={styles.rowSub}>
                   Hopper over varsler resten av dagen når du allerede har fullført en økt
@@ -560,6 +576,24 @@ export default function SettingsScreen() {
               >
                 <Text style={[styles.presetChipText, active && styles.presetChipTextActive]}>
                   {goal} min
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <View style={styles.divider} />
+        <Text style={styles.presetLabel}>Ukesmål (antall økter)</Text>
+        <View style={styles.presetRow}>
+          {WEEKLY_SESSION_GOAL_PRESETS.map((goal) => {
+            const active = state.weeklySessionGoal === goal;
+            return (
+              <Pressable
+                key={`sessions-${goal}`}
+                onPress={() => updatePreferences({ weeklySessionGoal: goal })}
+                style={[styles.presetChip, active && styles.presetChipActive]}
+              >
+                <Text style={[styles.presetChipText, active && styles.presetChipTextActive]}>
+                  {goal} økter
                 </Text>
               </Pressable>
             );

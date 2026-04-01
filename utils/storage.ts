@@ -47,6 +47,7 @@ export interface SessionRecord {
   completedAt: string;
   stressBefore?: number;
   effectScore?: number;
+  ambientSoundscape?: AmbientSoundscape;
 }
 
 export interface ReminderTime {
@@ -84,6 +85,12 @@ export interface SavedSession {
 export interface StressCheckSnapshot {
   level: number;
   updatedAt: string;
+}
+
+export interface OnboardingProfile {
+  stressLevel: number;
+  sleepQuality: number;
+  focusNeed: number;
 }
 
 function clampHour(value: unknown, fallback: number): number {
@@ -205,6 +212,20 @@ function parseStressSnapshot(raw: unknown): StressCheckSnapshot | undefined {
   return { level, updatedAt: cast.updatedAt };
 }
 
+function parseOnboardingProfile(raw: unknown): OnboardingProfile | undefined {
+  if (raw == null || typeof raw !== 'object') return undefined;
+  const cast = raw as Partial<OnboardingProfile>;
+  const stressLevel = clampStressLevel(cast.stressLevel);
+  const sleepQuality = clampStressLevel(cast.sleepQuality);
+  const focusNeed = clampStressLevel(cast.focusNeed);
+  if (!stressLevel || !sleepQuality || !focusNeed) return undefined;
+  return {
+    stressLevel,
+    sleepQuality,
+    focusNeed,
+  };
+}
+
 export interface AppData {
   currentStreak: number;
   lastSessionDate: string;
@@ -213,6 +234,7 @@ export interface AppData {
   favorites: string[];
   hasCompletedOnboarding: boolean;
   userGoal?: 'calm' | 'focus' | 'energy';
+  onboardingProfile?: OnboardingProfile;
   hapticsEnabled: boolean;
   reduceMotion: boolean;
   soundMode: SoundMode;
@@ -222,6 +244,7 @@ export interface AppData {
   ambientMix: AmbientMix;
   reminderEnabled: boolean;
   reminderTimes: ReminderTime[];
+  reminderAdaptiveEnabled: boolean;
   reminderQuietWeekends: boolean;
   reminderSkipIfDoneToday: boolean;
   exerciseDurationPrefs: Record<string, number>;
@@ -231,6 +254,7 @@ export interface AppData {
   savedSessions: SavedSession[];
   stressCheck?: StressCheckSnapshot;
   weeklyGoalMinutes: number;
+  weeklySessionGoal: number;
   /** iOS: log Mindful Session to Apple Health when a session completes */
   healthSyncEnabled: boolean;
 }
@@ -242,6 +266,7 @@ export const defaultAppData: AppData = {
   sessions: [],
   favorites: [],
   hasCompletedOnboarding: false,
+  onboardingProfile: undefined,
   hapticsEnabled: true,
   reduceMotion: false,
   soundMode: 'off',
@@ -249,6 +274,7 @@ export const defaultAppData: AppData = {
   ambientMix: { ...DEFAULT_AMBIENT_MIX },
   reminderEnabled: false,
   reminderTimes: [{ hour: 9, minute: 0 }],
+  reminderAdaptiveEnabled: false,
   reminderQuietWeekends: false,
   reminderSkipIfDoneToday: true,
   exerciseDurationPrefs: {},
@@ -258,6 +284,7 @@ export const defaultAppData: AppData = {
   savedSessions: [],
   stressCheck: undefined,
   weeklyGoalMinutes: 40,
+  weeklySessionGoal: 5,
   healthSyncEnabled: false,
 };
 
@@ -277,8 +304,15 @@ export async function loadAppData(): Promise<AppData> {
           parseAmbientSoundscape(parsed.ambientSoundscape)
         ),
         reminderTimes: parseReminderTimes(parsed.reminderTimes, legacyReminderHour, legacyReminderMinute),
+        reminderAdaptiveEnabled:
+          typeof parsed.reminderAdaptiveEnabled === 'boolean'
+            ? parsed.reminderAdaptiveEnabled
+            : defaultAppData.reminderAdaptiveEnabled,
         favorites: parsed.favorites ?? defaultAppData.favorites,
         sessions: parsed.sessions ?? defaultAppData.sessions,
+        onboardingProfile: parseOnboardingProfile(
+          (parsed as { onboardingProfile?: unknown }).onboardingProfile
+        ),
         ambientMixPresets: parseAmbientMixPresets(parsed.ambientMixPresets),
         activeProgram: parseActiveProgram(parsed.activeProgram),
         widgetSnapshot: parseWidgetSnapshot(parsed.widgetSnapshot),
@@ -292,6 +326,10 @@ export async function loadAppData(): Promise<AppData> {
           typeof parsed.weeklyGoalMinutes === 'number' && parsed.weeklyGoalMinutes > 0
             ? Math.round(parsed.weeklyGoalMinutes)
             : defaultAppData.weeklyGoalMinutes,
+        weeklySessionGoal:
+          typeof parsed.weeklySessionGoal === 'number' && parsed.weeklySessionGoal > 0
+            ? Math.round(parsed.weeklySessionGoal)
+            : defaultAppData.weeklySessionGoal,
       };
     }
     return defaultAppData;

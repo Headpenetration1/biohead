@@ -71,6 +71,8 @@ Se [eas.json](eas.json) for profiler (`development`, `preview`, `production`).
 - [ ] Aldersanbefaling og support-URL / personvern (om aktuelt)
 - [ ] TestFlight-runde før App Review
 
+Detaljert listing-mal (screenshots/video/ASO): [docs/store-readiness.md](docs/store-readiness.md)
+
 ### Ikon
 
 Master-ikon skal være **1024×1024** for butikken. Prosjektet bruker [assets/icon-app-transparent.png](assets/icon-app-transparent.png) (oppgradert fra kilde ved behov).

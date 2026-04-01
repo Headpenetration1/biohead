@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import type { ReminderTime } from '@/utils/storage';
+import type { ReminderTime, SessionRecord } from '@/utils/storage';
 import { getToday } from '@/utils/formatTime';
 
 Notifications.setNotificationHandler({
@@ -44,6 +44,27 @@ function normalizeReminderTimes(times: ReminderTime[]): ReminderTime[] {
     .sort((a, b) => a.hour - b.hour || a.minute - b.minute);
 }
 
+export function getAdaptiveReminderTimes(
+  sessions: SessionRecord[],
+  fallbackTimes: ReminderTime[]
+): ReminderTime[] {
+  if (sessions.length < 5) return normalizeReminderTimes(fallbackTimes);
+  const last21 = [...sessions]
+    .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())
+    .slice(0, 21);
+  if (last21.length === 0) return normalizeReminderTimes(fallbackTimes);
+  const hourCounts = new Map<number, number>();
+  for (const session of last21) {
+    const hour = new Date(session.completedAt).getHours();
+    hourCounts.set(hour, (hourCounts.get(hour) ?? 0) + 1);
+  }
+  const sortedHours = [...hourCounts.entries()].sort((a, b) => b[1] - a[1]);
+  const preferredHour = sortedHours[0]?.[0];
+  if (preferredHour == null) return normalizeReminderTimes(fallbackTimes);
+  const preferred: ReminderTime = { hour: preferredHour, minute: 0 };
+  return [preferred];
+}
+
 /**
  * Cancels all scheduled notifications and, if enabled, schedules one or more daily local notifications.
  */
@@ -51,6 +72,8 @@ export async function syncDailyReminder(
   enabled: boolean,
   reminderTimes: ReminderTime[],
   options?: {
+    adaptiveEnabled?: boolean;
+    sessions?: SessionRecord[];
     quietWeekends?: boolean;
     skipIfDoneToday?: boolean;
     lastSessionDate?: string;
@@ -64,7 +87,10 @@ export async function syncDailyReminder(
   if (!granted) return;
 
   await ensureAndroidChannel();
-  const times = normalizeReminderTimes(reminderTimes);
+  const times =
+    options?.adaptiveEnabled && options.sessions
+      ? getAdaptiveReminderTimes(options.sessions, reminderTimes)
+      : normalizeReminderTimes(reminderTimes);
   if (times.length === 0) return;
 
   for (const reminder of times) {
