@@ -401,7 +401,7 @@ export default function HomeScreen() {
           <Animated.View entering={FadeInDown.delay(230).duration(500).springify()} style={styles.programWrap}>
             <Pressable onPress={() => router.push('/programs' as Href)} style={styles.programCard}>
               <Text style={styles.programTitle}>Guidede programmer</Text>
-              <Text style={styles.programSub}>Start et 7-dagers løp og bygg vane dag for dag.</Text>
+              <Text style={styles.programSub}>Start et program og bygg vane dag for dag.</Text>
             </Pressable>
           </Animated.View>
         )}

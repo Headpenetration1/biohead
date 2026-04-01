@@ -1,10 +1,10 @@
 import { getProgramById, PROGRAMS } from '@/constants/programs';
 
 describe('program definitions', () => {
-  it('contains three 7-day programs', () => {
-    expect(PROGRAMS).toHaveLength(3);
+  it('contains multiple programs with valid day plans', () => {
+    expect(PROGRAMS.length).toBeGreaterThanOrEqual(3);
     for (const program of PROGRAMS) {
-      expect(program.days).toHaveLength(7);
+      expect(program.days.length).toBeGreaterThanOrEqual(7);
     }
   });
 

@@ -29,7 +29,7 @@ export default function ProgramsScreen() {
 
       <Text style={styles.title}>Programmer</Text>
       <Text style={styles.sub}>
-        Velg et 7-dagers opplegg. Fullfør dagens øvelse for å låse opp neste dag.
+        Velg et opplegg. Fullfør dagens øvelse for å låse opp neste dag.
       </Text>
 
       <View style={styles.list}>
