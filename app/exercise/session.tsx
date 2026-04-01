@@ -223,7 +223,12 @@ export default function SessionScreen() {
         </Text>
       </Animated.View>
 
-      <Modal visible={showQuitModal} transparent animationType="fade">
+      <Modal
+        visible={showQuitModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowQuitModal(false)}
+      >
         <View style={styles.modalOverlay}>
           <Animated.View entering={ZoomIn.duration(300).springify()} style={styles.modalContent}>
             <Text style={styles.modalTitle}>Avslutte økten?</Text>
@@ -359,18 +364,24 @@ const styles = StyleSheet.create({
 
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(2,5,8,0.85)',
+    backgroundColor: 'rgba(14,32,37,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 24,
   },
   modalContent: {
-    width: '85%',
+    width: '100%',
     maxWidth: 320,
-    backgroundColor: 'rgba(14,32,37,0.05)',
+    backgroundColor: '#FFF9ED',
     borderRadius: 28,
-    padding: 32,
+    padding: 24,
     borderWidth: 1,
-    borderColor: 'rgba(14,32,37,0.1)',
+    borderColor: 'rgba(14,32,37,0.16)',
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 10,
   },
   modalTitle: {
     fontFamily: Typography.fontFamily.bold,
@@ -390,29 +401,30 @@ const styles = StyleSheet.create({
   modalButtons: {
     flexDirection: 'row',
     gap: 12,
+    width: '100%',
   },
   modalButtonSecondary: {
     flex: 1,
     paddingVertical: 16,
-    backgroundColor: 'rgba(14,32,37,0.05)',
+    backgroundColor: 'rgba(14,32,37,0.10)',
     borderRadius: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(14,32,37,0.08)',
+    borderColor: 'rgba(14,32,37,0.18)',
   },
   modalButtonSecondaryText: {
     fontFamily: Typography.fontFamily.bold,
     fontSize: Typography.sizes.sm,
-    color: Colors.textSecondary,
+    color: Colors.textPrimary,
   },
   modalButtonDestructive: {
     flex: 1,
     paddingVertical: 16,
-    backgroundColor: 'rgba(255,42,85,0.15)',
+    backgroundColor: 'rgba(14,32,37,0.14)',
     borderRadius: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,42,85,0.3)',
+    borderColor: 'rgba(14,32,37,0.24)',
   },
   modalButtonDestructiveText: {
     fontFamily: Typography.fontFamily.bold,

@@ -1,9 +1,13 @@
 import React from 'react';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import type { WidgetSnapshot } from '@/utils/storage';
 
 let iosWidget: { updateSnapshot: (props: WidgetSnapshot) => void } | null = null;
 let androidRegistered = false;
+const isExpoGo =
+  Constants.appOwnership === 'expo' ||
+  String(Constants.executionEnvironment).toLowerCase() === 'storeclient';
 
 function getDeepLink(snapshot: WidgetSnapshot): string {
   const exerciseId = snapshot.recommendedExerciseId ?? snapshot.lastSessionExerciseId;
@@ -98,6 +102,7 @@ function setupAndroidWidget(snapshot: WidgetSnapshot): void {
 }
 
 export function syncWidgetSnapshot(snapshot: WidgetSnapshot): void {
+  if (isExpoGo) return;
   setupIosWidget();
   if (iosWidget) {
     try {
