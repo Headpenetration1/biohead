@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
@@ -51,7 +51,11 @@ export default function OnboardingScreen() {
       {step === 0 && (
         <Animated.View entering={FadeIn.duration(500)} style={styles.section}>
           <Text style={styles.kicker}>Velkommen</Text>
-          <Text style={styles.title}>Biohead</Text>
+          <Image source={require('@/assets/logo-transparent.png')} style={styles.logoFace} />
+          <View style={styles.titleRow}>
+            <Text style={styles.titleBio}>bio</Text>
+            <Text style={styles.titleHead}>head</Text>
+          </View>
           <Text style={styles.body}>
             Korte, guidede pusteøvelser for ro, fokus og energi – når du trenger det.
           </Text>
@@ -171,6 +175,12 @@ const styles = StyleSheet.create({
   section: {
     gap: 20,
   },
+  logoFace: {
+    width: 64,
+    height: 64,
+    resizeMode: 'contain',
+    marginBottom: -8,
+  },
   kicker: {
     fontFamily: Typography.fontFamily.semibold,
     fontSize: Typography.sizes.xs,
@@ -183,6 +193,22 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes['3xl'],
     color: Colors.textPrimary,
     letterSpacing: -0.5,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  titleBio: {
+    fontFamily: Typography.fontFamily.medium,
+    fontSize: Typography.sizes['3xl'],
+    color: Colors.greenAccent,
+    letterSpacing: -1,
+  },
+  titleHead: {
+    fontFamily: Typography.fontFamily.bold,
+    fontSize: Typography.sizes['3xl'],
+    color: Colors.textPrimary,
+    letterSpacing: -1,
   },
   body: {
     fontFamily: Typography.fontFamily.medium,
