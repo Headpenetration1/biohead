@@ -160,7 +160,7 @@ export default function HomeScreen() {
           entering={FadeInDown.delay(100).duration(600).springify()}
           style={styles.logoContainer}
         >
-          <Image source={require('@/assets/icon.png')} style={styles.logoFace} />
+          <Image source={require('@/assets/logo-transparent.png')} style={styles.logoFace} />
           <View style={styles.logoTextRow}>
             <Text style={styles.logoBio}>bio</Text>
             <Text style={styles.logoHead}>head</Text>
