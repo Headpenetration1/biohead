@@ -139,6 +139,14 @@ export default function ExerciseDetailScreen() {
         entering={FadeInDown.delay(300).duration(500).springify()}
         style={styles.startSection}
       >
+        <Pressable
+          onPress={() => router.push('/lydmikser')}
+          style={styles.soundMixerLink}
+          accessibilityRole="button"
+          accessibilityLabel="Åpne Lydmikser"
+        >
+          <Text style={styles.soundMixerLinkText}>Åpne Lydmikser</Text>
+        </Pressable>
         <Text style={styles.sectionLabel}>Stress før økt</Text>
         <View style={styles.stressRow}>
           {[1, 2, 3, 4, 5].map((level) => {
@@ -319,6 +327,20 @@ const styles = StyleSheet.create({
     maxWidth: 340,
     marginBottom: 32,
     gap: 10,
+  },
+  soundMixerLink: {
+    alignSelf: 'center',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: `${Colors.greenAccent}66`,
+    backgroundColor: `${Colors.greenAccent}18`,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  soundMixerLinkText: {
+    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.sizes.sm,
+    color: Colors.greenAccent,
   },
   stressRow: {
     flexDirection: 'row',

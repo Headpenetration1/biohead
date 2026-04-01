@@ -217,6 +217,18 @@ export default function HomeScreen() {
           )}
         </Animated.View>
 
+        <Animated.View entering={FadeInDown.delay(160).duration(500).springify()} style={styles.soundQuickWrap}>
+          <Pressable
+            onPress={() => router.push('/lydmikser' as Href)}
+            style={styles.soundQuickBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Åpne Lydmikser"
+          >
+            <Text style={styles.soundQuickTitle}>Lydmikser</Text>
+            <Text style={styles.soundQuickSub}>Juster miks, forhåndslytt og bruk lagrede lydprofiler</Text>
+          </Pressable>
+        </Animated.View>
+
         {recommended ? (
           <Animated.View entering={FadeInDown.delay(165).duration(500).springify()} style={styles.recoWrap}>
             <Pressable
@@ -571,6 +583,29 @@ const styles = StyleSheet.create({
   recoWrap: {
     alignSelf: 'stretch',
     marginBottom: 12,
+  },
+  soundQuickWrap: {
+    alignSelf: 'stretch',
+    marginBottom: 12,
+  },
+  soundQuickBtn: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    backgroundColor: 'rgba(14,32,37,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(14,32,37,0.08)',
+  },
+  soundQuickTitle: {
+    fontFamily: Typography.fontFamily.bold,
+    fontSize: Typography.sizes.base,
+    color: Colors.textPrimary,
+    marginBottom: 4,
+  },
+  soundQuickSub: {
+    fontFamily: Typography.fontFamily.regular,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textSecondary,
   },
   recoCard: {
     paddingVertical: 16,
