@@ -3,9 +3,11 @@ import { Audio, type AVPlaybackStatus } from 'expo-av';
 import type { SoundMode } from '@/utils/storage';
 import type { BreathingPhase } from '@/constants/exercises';
 import {
+  type AmbientMix,
   type AmbientSoundscape,
   AMBIENT_SOUND_MODULES,
   AMBIENT_SOUND_VOLUMES,
+  AMBIENT_SOUNDSCAPE_IDS,
 } from '@/constants/ambientSounds';
 
 const inhaleCue = require('@/assets/sounds/cue_inhale.wav');
@@ -28,11 +30,12 @@ async function ensureAudioMode(): Promise<void> {
 export function useBreathAudio(
   soundMode: SoundMode,
   ambientSoundscape: AmbientSoundscape,
+  ambientMix: AmbientMix,
   isSessionActive: boolean,
   isPaused: boolean,
   currentPhase: BreathingPhase
 ) {
-  const ambientRef = useRef<Audio.Sound | null>(null);
+  const ambientRefs = useRef<Partial<Record<AmbientSoundscape, Audio.Sound>>>({});
   const cueRef = useRef<Audio.Sound | null>(null);
   const lastPhaseRef = useRef<BreathingPhase | null>(null);
 
@@ -43,18 +46,21 @@ export function useBreathAudio(
   }, [isSessionActive]);
 
   const unloadAmbient = useCallback(async () => {
-    if (ambientRef.current) {
+    const sounds = Object.values(ambientRefs.current).filter(
+      (sound): sound is Audio.Sound => sound != null
+    );
+    ambientRefs.current = {};
+    for (const sound of sounds) {
       try {
-        await ambientRef.current.stopAsync();
+        await sound.stopAsync();
       } catch {
         /* ignore */
       }
       try {
-        await ambientRef.current.unloadAsync();
+        await sound.unloadAsync();
       } catch {
         /* ignore */
       }
-      ambientRef.current = null;
     }
   }, []);
 
@@ -83,23 +89,47 @@ export function useBreathAudio(
       await unloadAmbient();
       if (cancelled) return;
       try {
-        const module = AMBIENT_SOUND_MODULES[ambientSoundscape];
-        const volume = AMBIENT_SOUND_VOLUMES[ambientSoundscape];
-        const { sound } = await Audio.Sound.createAsync(
-          module,
-          { isLooping: true, volume },
-          (status: AVPlaybackStatus) => {
-            if (!status.isLoaded && 'error' in status && status.error) {
-              console.warn('Ambient audio error', status.error);
-            }
-          }
+        const activeMix = AMBIENT_SOUNDSCAPE_IDS.filter(
+          (id) => (ambientMix[id] ?? 0) > 0.01
         );
-        if (cancelled) {
-          await sound.unloadAsync();
-          return;
+        for (const id of activeMix) {
+          const module = AMBIENT_SOUND_MODULES[id];
+          const volume = AMBIENT_SOUND_VOLUMES[id] * (ambientMix[id] ?? 0);
+          const { sound } = await Audio.Sound.createAsync(
+            module,
+            { isLooping: true, volume },
+            (status: AVPlaybackStatus) => {
+              if (!status.isLoaded && 'error' in status && status.error) {
+                console.warn('Ambient audio error', status.error);
+              }
+          }
+          );
+          if (cancelled) {
+            await sound.unloadAsync();
+            return;
+          }
+          ambientRefs.current[id] = sound;
+          await sound.playAsync();
         }
-        ambientRef.current = sound;
-        await sound.playAsync();
+        if (activeMix.length === 0) {
+          const fallbackModule = AMBIENT_SOUND_MODULES[ambientSoundscape];
+          const fallbackVolume = AMBIENT_SOUND_VOLUMES[ambientSoundscape];
+          const { sound } = await Audio.Sound.createAsync(
+            fallbackModule,
+            { isLooping: true, volume: fallbackVolume },
+            (status: AVPlaybackStatus) => {
+              if (!status.isLoaded && 'error' in status && status.error) {
+                console.warn('Ambient audio error', status.error);
+              }
+            }
+          );
+          if (cancelled) {
+            await sound.unloadAsync();
+            return;
+          }
+          ambientRefs.current[ambientSoundscape] = sound;
+          await sound.playAsync();
+        }
       } catch (e) {
         console.warn('Failed to start ambient audio', e);
       }
@@ -109,7 +139,7 @@ export function useBreathAudio(
       cancelled = true;
       void unloadAmbient();
     };
-  }, [soundMode, ambientSoundscape, isSessionActive, isPaused, unloadAmbient]);
+  }, [soundMode, ambientSoundscape, ambientMix, isSessionActive, isPaused, unloadAmbient]);
 
   // Phase cues
   useEffect(() => {
@@ -162,11 +192,18 @@ export function useBreathAudio(
 
   // Pause / resume ambient volume
   useEffect(() => {
-    if (!ambientRef.current) return;
+    const sounds = Object.values(ambientRefs.current).filter(
+      (sound): sound is Audio.Sound => sound != null
+    );
+    if (sounds.length === 0) return;
     if (isPaused) {
-      void ambientRef.current.pauseAsync().catch(() => {});
+      for (const sound of sounds) {
+        void sound.pauseAsync().catch(() => {});
+      }
     } else if (soundMode === 'ambient' && isSessionActive) {
-      void ambientRef.current.playAsync().catch(() => {});
+      for (const sound of sounds) {
+        void sound.playAsync().catch(() => {});
+      }
     }
   }, [isPaused, soundMode, isSessionActive]);
 }

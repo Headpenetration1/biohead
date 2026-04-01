@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
-import type { AmbientSoundscape } from '@/constants/ambientSounds';
+import type { AmbientMix, AmbientSoundscape } from '@/constants/ambientSounds';
 import {
   AppData,
   ReminderTime,
@@ -34,6 +34,7 @@ type Action =
         reduceMotion: boolean;
         soundMode: SoundMode;
         ambientSoundscape: AmbientSoundscape;
+        ambientMix: AmbientMix;
         reminderEnabled: boolean;
         reminderTimes: ReminderTime[];
         reminderQuietWeekends: boolean;
@@ -120,6 +121,7 @@ export type PreferenceUpdates = Partial<{
   reduceMotion: boolean;
   soundMode: SoundMode;
   ambientSoundscape: AmbientSoundscape;
+  ambientMix: AmbientMix;
   reminderEnabled: boolean;
   reminderTimes: ReminderTime[];
   reminderQuietWeekends: boolean;

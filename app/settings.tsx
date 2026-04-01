@@ -17,7 +17,11 @@ import { Colors } from '@/constants/colors';
 import { Typography } from '@/constants/typography';
 import { useAppContext } from '@/context/AppContext';
 import type { ReminderTime, SoundMode } from '@/utils/storage';
-import { AMBIENT_SOUNDSCAPE_OPTIONS } from '@/constants/ambientSounds';
+import {
+  type AmbientSoundscape,
+  AMBIENT_SOUNDSCAPE_IDS,
+  AMBIENT_SOUNDSCAPE_OPTIONS,
+} from '@/constants/ambientSounds';
 import { requestNotificationPermission } from '@/utils/reminders';
 import { requestHealthKitMindfulAccess } from '@/utils/appleHealthMindful';
 
@@ -45,6 +49,33 @@ export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { state, updatePreferences, resetData } = useAppContext();
+
+  const setAmbientLevel = useCallback(
+    (id: AmbientSoundscape, nextLevel: number) => {
+      const clamped = Math.max(0, Math.min(1, nextLevel));
+      const mix = { ...state.ambientMix, [id]: clamped };
+      const activeCount = AMBIENT_SOUNDSCAPE_IDS.filter((soundId) => (mix[soundId] ?? 0) > 0.01).length;
+      if (activeCount === 0) {
+        mix.wind = 1;
+      }
+      updatePreferences({ ambientMix: mix, ambientSoundscape: id });
+    },
+    [state.ambientMix, updatePreferences]
+  );
+
+  const setAmbientSolo = useCallback(
+    (id: AmbientSoundscape) => {
+      const solo = AMBIENT_SOUNDSCAPE_IDS.reduce<Record<AmbientSoundscape, number>>(
+        (acc, soundId) => ({
+          ...acc,
+          [soundId]: soundId === id ? 1 : 0,
+        }),
+        {} as Record<AmbientSoundscape, number>
+      );
+      updatePreferences({ ambientMix: solo, ambientSoundscape: id });
+    },
+    [updatePreferences]
+  );
 
   const isReminderSelected = useCallback(
     (target: ReminderTime) =>
@@ -195,14 +226,14 @@ export default function SettingsScreen() {
         {state.soundMode === 'ambient' ? (
           <>
             <View style={styles.divider} />
-            <Text style={styles.presetLabel}>Naturlig bakgrunn</Text>
+            <Text style={styles.presetLabel}>Hurtigvalg (solo)</Text>
             <View style={styles.soundscapeList}>
               {AMBIENT_SOUNDSCAPE_OPTIONS.map((opt) => {
                 const active = state.ambientSoundscape === opt.id;
                 return (
                   <Pressable
                     key={opt.id}
-                    onPress={() => updatePreferences({ ambientSoundscape: opt.id })}
+                    onPress={() => setAmbientSolo(opt.id)}
                     style={[styles.soundscapeChip, active && styles.soundscapeChipActive]}
                   >
                     <Text
@@ -217,6 +248,40 @@ export default function SettingsScreen() {
                       {opt.sub}
                     </Text>
                   </Pressable>
+                );
+              })}
+            </View>
+            <View style={styles.divider} />
+            <Text style={styles.presetLabel}>Mikser (kombiner lyder)</Text>
+            <View style={styles.mixList}>
+              {AMBIENT_SOUNDSCAPE_OPTIONS.map((opt) => {
+                const level = state.ambientMix[opt.id] ?? 0;
+                const pct = Math.round(level * 100);
+                return (
+                  <View key={`mix-${opt.id}`} style={styles.mixRow}>
+                    <View style={styles.mixInfo}>
+                      <Text style={styles.mixTitle}>{opt.label}</Text>
+                      <Text style={styles.mixSub}>{pct}%</Text>
+                    </View>
+                    <View style={styles.mixControls}>
+                      <Pressable
+                        onPress={() => setAmbientLevel(opt.id, level - 0.2)}
+                        style={styles.mixBtn}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Reduser ${opt.label}`}
+                      >
+                        <Text style={styles.mixBtnText}>−</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => setAmbientLevel(opt.id, level + 0.2)}
+                        style={styles.mixBtn}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Øk ${opt.label}`}
+                      >
+                        <Text style={styles.mixBtnText}>+</Text>
+                      </Pressable>
+                    </View>
+                  </View>
                 );
               })}
             </View>
@@ -527,6 +592,58 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.textMuted,
     lineHeight: 15,
+  },
+  mixList: {
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    gap: 10,
+  },
+  mixRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(14,32,37,0.08)',
+    backgroundColor: 'rgba(14,32,37,0.04)',
+  },
+  mixInfo: {
+    flex: 1,
+  },
+  mixTitle: {
+    fontFamily: Typography.fontFamily.bold,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textPrimary,
+  },
+  mixSub: {
+    fontFamily: Typography.fontFamily.regular,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+  mixControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  mixBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(14,32,37,0.12)',
+    backgroundColor: 'rgba(14,32,37,0.08)',
+  },
+  mixBtnText: {
+    fontFamily: Typography.fontFamily.bold,
+    fontSize: Typography.sizes.lg,
+    color: Colors.textPrimary,
+    marginTop: -1,
   },
   dangerRow: {
     paddingVertical: 16,

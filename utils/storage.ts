@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
+  type AmbientMix,
   type AmbientSoundscape,
+  DEFAULT_AMBIENT_MIX,
   AMBIENT_SOUNDSCAPE_IDS,
 } from '@/constants/ambientSounds';
 
@@ -16,6 +18,25 @@ function parseAmbientSoundscape(raw: unknown): AmbientSoundscape {
     return raw as AmbientSoundscape;
   }
   return 'wind';
+}
+
+function parseAmbientMix(raw: unknown, fallbackSoundscape: AmbientSoundscape): AmbientMix {
+  const base: AmbientMix = { ...DEFAULT_AMBIENT_MIX };
+  if (raw == null || typeof raw !== 'object') {
+    base[fallbackSoundscape] = 1;
+    return base;
+  }
+  const cast = raw as Partial<Record<AmbientSoundscape, unknown>>;
+  for (const key of AMBIENT_SOUNDSCAPE_IDS) {
+    const value = cast[key];
+    if (typeof value !== 'number' || Number.isNaN(value)) continue;
+    base[key] = Math.max(0, Math.min(1, value));
+  }
+  const hasAny = AMBIENT_SOUNDSCAPE_IDS.some((id) => base[id] > 0.01);
+  if (!hasAny) {
+    base[fallbackSoundscape] = 1;
+  }
+  return base;
 }
 
 export interface SessionRecord {
@@ -80,6 +101,8 @@ export interface AppData {
   soundMode: SoundMode;
   /** Background loop when soundMode === 'ambient' */
   ambientSoundscape: AmbientSoundscape;
+  /** Multi-track mix volumes (0-1) when soundMode === 'ambient' */
+  ambientMix: AmbientMix;
   reminderEnabled: boolean;
   reminderTimes: ReminderTime[];
   reminderQuietWeekends: boolean;
@@ -101,6 +124,7 @@ export const defaultAppData: AppData = {
   reduceMotion: false,
   soundMode: 'off',
   ambientSoundscape: 'wind',
+  ambientMix: { ...DEFAULT_AMBIENT_MIX },
   reminderEnabled: false,
   reminderTimes: [{ hour: 9, minute: 0 }],
   reminderQuietWeekends: false,
@@ -121,6 +145,10 @@ export async function loadAppData(): Promise<AppData> {
         ...defaultAppData,
         ...parsed,
         ambientSoundscape: parseAmbientSoundscape(parsed.ambientSoundscape),
+        ambientMix: parseAmbientMix(
+          parsed.ambientMix,
+          parseAmbientSoundscape(parsed.ambientSoundscape)
+        ),
         reminderTimes: parseReminderTimes(parsed.reminderTimes, legacyReminderHour, legacyReminderMinute),
         favorites: parsed.favorites ?? defaultAppData.favorites,
         sessions: parsed.sessions ?? defaultAppData.sessions,

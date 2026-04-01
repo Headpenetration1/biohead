@@ -46,6 +46,7 @@ export default function SessionScreen() {
   useBreathAudio(
     state.soundMode,
     state.ambientSoundscape,
+    state.ambientMix,
     sessionActive,
     engine.isPaused,
     engine.currentPhase

@@ -10,6 +10,8 @@ export type AmbientSoundscape =
   | 'rain'
   | 'waves';
 
+export type AmbientMix = Record<AmbientSoundscape, number>;
+
 export const AMBIENT_SOUNDSCAPE_IDS: AmbientSoundscape[] = [
   'neutral',
   'wind',
@@ -51,3 +53,12 @@ export const AMBIENT_SOUNDSCAPE_OPTIONS: {
   { id: 'rain', label: 'Regn', sub: 'Mild regn på tak' },
   { id: 'waves', label: 'Bølger', sub: 'Rolig hav' },
 ];
+
+export const DEFAULT_AMBIENT_MIX: AmbientMix = {
+  neutral: 0,
+  wind: 1,
+  birds: 0,
+  forest: 0,
+  rain: 0,
+  waves: 0,
+};
