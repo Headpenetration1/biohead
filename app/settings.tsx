@@ -48,7 +48,14 @@ const SOUND_OPTIONS: { mode: SoundMode; label: string; sub: string }[] = [
 export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { state, updatePreferences, resetData } = useAppContext();
+  const {
+    state,
+    updatePreferences,
+    resetData,
+    saveAmbientPreset,
+    applyAmbientPreset,
+    deleteAmbientPreset,
+  } = useAppContext();
 
   const setAmbientLevel = useCallback(
     (id: AmbientSoundscape, nextLevel: number) => {
@@ -76,6 +83,10 @@ export default function SettingsScreen() {
     },
     [updatePreferences]
   );
+
+  const saveCurrentMix = useCallback(() => {
+    saveAmbientPreset();
+  }, [saveAmbientPreset]);
 
   const isReminderSelected = useCallback(
     (target: ReminderTime) =>
@@ -284,6 +295,37 @@ export default function SettingsScreen() {
                   </View>
                 );
               })}
+            </View>
+            <View style={styles.divider} />
+            <Text style={styles.presetLabel}>Lagrede mikser</Text>
+            <View style={styles.mixList}>
+              <Pressable onPress={saveCurrentMix} style={styles.saveMixBtn}>
+                <Text style={styles.saveMixBtnText}>Lagre nåværende miks</Text>
+              </Pressable>
+              {state.ambientMixPresets.length === 0 ? (
+                <Text style={styles.mixEmpty}>Ingen lagrede mikser ennå.</Text>
+              ) : (
+                state.ambientMixPresets.map((preset) => (
+                  <View key={preset.id} style={styles.presetMixRow}>
+                    <Pressable
+                      onPress={() => applyAmbientPreset(preset.id)}
+                      style={styles.presetMixApply}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Bruk miks ${preset.name}`}
+                    >
+                      <Text style={styles.presetMixName}>{preset.name}</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => deleteAmbientPreset(preset.id)}
+                      style={styles.presetMixDelete}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Slett miks ${preset.name}`}
+                    >
+                      <Text style={styles.presetMixDeleteText}>Slett</Text>
+                    </Pressable>
+                  </View>
+                ))
+              )}
             </View>
           </>
         ) : null}
@@ -644,6 +686,58 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.lg,
     color: Colors.textPrimary,
     marginTop: -1,
+  },
+  saveMixBtn: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: `${Colors.greenAccent}55`,
+    backgroundColor: `${Colors.greenAccent}18`,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+  },
+  saveMixBtnText: {
+    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.sizes.sm,
+    color: Colors.greenAccent,
+  },
+  mixEmpty: {
+    fontFamily: Typography.fontFamily.regular,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textMuted,
+    paddingHorizontal: 4,
+  },
+  presetMixRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  presetMixApply: {
+    flex: 1,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(14,32,37,0.08)',
+    backgroundColor: 'rgba(14,32,37,0.04)',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  presetMixName: {
+    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textPrimary,
+  },
+  presetMixDelete: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(14,32,37,0.12)',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(14,32,37,0.06)',
+  },
+  presetMixDeleteText: {
+    fontFamily: Typography.fontFamily.medium,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textSecondary,
   },
   dangerRow: {
     paddingVertical: 16,

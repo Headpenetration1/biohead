@@ -5,6 +5,7 @@ import {
   DEFAULT_AMBIENT_MIX,
   AMBIENT_SOUNDSCAPE_IDS,
 } from '@/constants/ambientSounds';
+import { getProgramById, type ProgramId } from '@/constants/programs';
 
 const STORAGE_KEY = '@biohead_data';
 
@@ -51,6 +52,25 @@ export interface ReminderTime {
   minute: number;
 }
 
+export interface AmbientMixPreset {
+  id: string;
+  name: string;
+  mix: AmbientMix;
+}
+
+export interface ActiveProgramState {
+  id: ProgramId;
+  currentDay: number;
+  completedDays: number;
+  lastCompletedDate?: string;
+}
+
+export interface WidgetSnapshot {
+  recommendedExerciseId?: string;
+  lastSessionExerciseId?: string;
+  updatedAt?: string;
+}
+
 function clampHour(value: unknown, fallback: number): number {
   if (typeof value !== 'number' || Number.isNaN(value)) return fallback;
   return Math.max(0, Math.min(23, Math.round(value)));
@@ -88,6 +108,49 @@ function parseReminderTimes(
   return unique.length > 0 ? unique : [{ hour: fallbackHour, minute: fallbackMinute }];
 }
 
+function parseAmbientMixPresets(raw: unknown): AmbientMixPreset[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((entry) => {
+      if (entry == null || typeof entry !== 'object') return null;
+      const cast = entry as Partial<AmbientMixPreset>;
+      if (typeof cast.id !== 'string' || typeof cast.name !== 'string') return null;
+      return {
+        id: cast.id,
+        name: cast.name.trim().slice(0, 40) || 'Miks',
+        mix: parseAmbientMix(cast.mix, 'wind'),
+      };
+    })
+    .filter((entry): entry is AmbientMixPreset => entry != null);
+}
+
+function parseActiveProgram(raw: unknown): ActiveProgramState | undefined {
+  if (raw == null || typeof raw !== 'object') return undefined;
+  const cast = raw as Partial<ActiveProgramState>;
+  if (typeof cast.id !== 'string' || !getProgramById(cast.id)) return undefined;
+  const currentDayRaw = typeof cast.currentDay === 'number' ? Math.floor(cast.currentDay) : 1;
+  const completedRaw = typeof cast.completedDays === 'number' ? Math.floor(cast.completedDays) : 0;
+  return {
+    id: cast.id as ProgramId,
+    currentDay: Math.max(1, currentDayRaw),
+    completedDays: Math.max(0, completedRaw),
+    lastCompletedDate:
+      typeof cast.lastCompletedDate === 'string' ? cast.lastCompletedDate : undefined,
+  };
+}
+
+function parseWidgetSnapshot(raw: unknown): WidgetSnapshot {
+  if (raw == null || typeof raw !== 'object') return {};
+  const cast = raw as Partial<WidgetSnapshot>;
+  return {
+    recommendedExerciseId:
+      typeof cast.recommendedExerciseId === 'string' ? cast.recommendedExerciseId : undefined,
+    lastSessionExerciseId:
+      typeof cast.lastSessionExerciseId === 'string' ? cast.lastSessionExerciseId : undefined,
+    updatedAt: typeof cast.updatedAt === 'string' ? cast.updatedAt : undefined,
+  };
+}
+
 export interface AppData {
   currentStreak: number;
   lastSessionDate: string;
@@ -108,6 +171,9 @@ export interface AppData {
   reminderQuietWeekends: boolean;
   reminderSkipIfDoneToday: boolean;
   exerciseDurationPrefs: Record<string, number>;
+  ambientMixPresets: AmbientMixPreset[];
+  activeProgram?: ActiveProgramState;
+  widgetSnapshot: WidgetSnapshot;
   weeklyGoalMinutes: number;
   /** iOS: log Mindful Session to Apple Health when a session completes */
   healthSyncEnabled: boolean;
@@ -130,6 +196,9 @@ export const defaultAppData: AppData = {
   reminderQuietWeekends: false,
   reminderSkipIfDoneToday: true,
   exerciseDurationPrefs: {},
+  ambientMixPresets: [],
+  activeProgram: undefined,
+  widgetSnapshot: {},
   weeklyGoalMinutes: 40,
   healthSyncEnabled: false,
 };
@@ -152,6 +221,9 @@ export async function loadAppData(): Promise<AppData> {
         reminderTimes: parseReminderTimes(parsed.reminderTimes, legacyReminderHour, legacyReminderMinute),
         favorites: parsed.favorites ?? defaultAppData.favorites,
         sessions: parsed.sessions ?? defaultAppData.sessions,
+        ambientMixPresets: parseAmbientMixPresets(parsed.ambientMixPresets),
+        activeProgram: parseActiveProgram(parsed.activeProgram),
+        widgetSnapshot: parseWidgetSnapshot(parsed.widgetSnapshot),
         exerciseDurationPrefs: {
           ...defaultAppData.exerciseDurationPrefs,
           ...(parsed.exerciseDurationPrefs ?? {}),

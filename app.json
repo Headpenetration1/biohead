@@ -40,7 +40,41 @@
       "expo-font",
       "expo-av",
       "expo-notifications",
-      "@sentry/react-native"
+      "@sentry/react-native",
+      [
+        "expo-widgets",
+        {
+          "groupIdentifier": "group.no.biohead.app",
+          "widgets": [
+            {
+              "name": "BioheadHomeWidget",
+              "supportedFamilies": [
+                "systemSmall",
+                "systemMedium"
+              ],
+              "displayName": "Biohead",
+              "description": "Hurtigstart pusteøvelse",
+              "contentMarginsDisabled": false
+            }
+          ]
+        }
+      ],
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "BioheadQuickWidget",
+              "label": "Biohead",
+              "description": "Hurtigstart pusteøvelse",
+              "minWidth": "180dp",
+              "minHeight": "100dp",
+              "previewImage": "./assets/icon-app-transparent.png",
+              "updatePeriodMillis": 1800000
+            }
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

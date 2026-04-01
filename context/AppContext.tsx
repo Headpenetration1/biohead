@@ -1,9 +1,16 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
-import type { AmbientMix, AmbientSoundscape } from '@/constants/ambientSounds';
 import {
+  AMBIENT_SOUNDSCAPE_IDS,
+  type AmbientMix,
+  type AmbientSoundscape,
+} from '@/constants/ambientSounds';
+import { getProgramById, type ProgramId } from '@/constants/programs';
+import {
+  type AmbientMixPreset,
   AppData,
   ReminderTime,
   SessionRecord,
+  type WidgetSnapshot,
   defaultAppData,
   loadAppData,
   saveAppData,
@@ -12,6 +19,7 @@ import {
 import { getToday, getYesterday } from '@/utils/formatTime';
 import { nextStreakOnSessionComplete } from '@/utils/streak';
 import { syncDailyReminder } from '@/utils/reminders';
+import { syncWidgetSnapshot } from '@/utils/widgetBridge';
 
 interface AppState extends AppData {
   isLoading: boolean;
@@ -27,6 +35,11 @@ type Action =
   | { type: 'COMPLETE_SESSION'; payload: { exerciseId: string; duration: number } }
   | { type: 'TOGGLE_FAVORITE'; payload: string }
   | { type: 'COMPLETE_ONBOARDING'; payload?: 'calm' | 'focus' | 'energy' }
+  | { type: 'START_PROGRAM'; payload: ProgramId }
+  | { type: 'SAVE_AMBIENT_PRESET'; payload?: { name?: string } }
+  | { type: 'APPLY_AMBIENT_PRESET'; payload: string }
+  | { type: 'DELETE_AMBIENT_PRESET'; payload: string }
+  | { type: 'SET_WIDGET_SNAPSHOT'; payload: Partial<WidgetSnapshot> }
   | {
       type: 'UPDATE_PREFERENCES';
       payload: Partial<{
@@ -35,6 +48,7 @@ type Action =
         soundMode: SoundMode;
         ambientSoundscape: AmbientSoundscape;
         ambientMix: AmbientMix;
+        ambientMixPresets: AmbientMixPreset[];
         reminderEnabled: boolean;
         reminderTimes: ReminderTime[];
         reminderQuietWeekends: boolean;
@@ -75,6 +89,28 @@ function reducer(state: AppState, action: Action): AppState {
         lastSessionDate: today,
         longestStreak: Math.max(state.longestStreak, newStreak),
         sessions: [...state.sessions, newSession],
+        activeProgram: (() => {
+          if (!state.activeProgram) return state.activeProgram;
+          const program = getProgramById(state.activeProgram.id);
+          if (!program) return undefined;
+          const step = program.days[state.activeProgram.currentDay - 1];
+          const alreadyCompletedToday = state.activeProgram.lastCompletedDate === today;
+          const matchesProgramStep = step?.exerciseId === action.payload.exerciseId;
+          if (!step || alreadyCompletedToday || !matchesProgramStep) return state.activeProgram;
+          const completedDays = Math.min(program.days.length, state.activeProgram.completedDays + 1);
+          if (completedDays >= program.days.length) return undefined;
+          return {
+            ...state.activeProgram,
+            completedDays,
+            currentDay: completedDays + 1,
+            lastCompletedDate: today,
+          };
+        })(),
+        widgetSnapshot: {
+          ...state.widgetSnapshot,
+          lastSessionExerciseId: action.payload.exerciseId,
+          updatedAt: new Date().toISOString(),
+        },
       };
     }
 
@@ -94,6 +130,58 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         hasCompletedOnboarding: true,
         userGoal: action.payload,
+      };
+
+    case 'START_PROGRAM':
+      return {
+        ...state,
+        activeProgram: {
+          id: action.payload,
+          currentDay: 1,
+          completedDays: 0,
+          lastCompletedDate: undefined,
+        },
+      };
+
+    case 'SAVE_AMBIENT_PRESET': {
+      const nextId = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+      const fallbackName = `Miks ${state.ambientMixPresets.length + 1}`;
+      const name = action.payload?.name?.trim() || fallbackName;
+      const newPreset: AmbientMixPreset = { id: nextId, name: name.slice(0, 40), mix: state.ambientMix };
+      return {
+        ...state,
+        ambientMixPresets: [newPreset, ...state.ambientMixPresets].slice(0, 8),
+      };
+    }
+
+    case 'APPLY_AMBIENT_PRESET': {
+      const preset = state.ambientMixPresets.find((item) => item.id === action.payload);
+      if (!preset) return state;
+      const dominant = AMBIENT_SOUNDSCAPE_IDS.reduce<AmbientSoundscape>(
+        (best, id) => ((preset.mix[id] ?? 0) > (preset.mix[best] ?? 0) ? id : best),
+        'wind'
+      );
+      return {
+        ...state,
+        ambientMix: preset.mix,
+        ambientSoundscape: dominant,
+      };
+    }
+
+    case 'DELETE_AMBIENT_PRESET':
+      return {
+        ...state,
+        ambientMixPresets: state.ambientMixPresets.filter((item) => item.id !== action.payload),
+      };
+
+    case 'SET_WIDGET_SNAPSHOT':
+      return {
+        ...state,
+        widgetSnapshot: {
+          ...state.widgetSnapshot,
+          ...action.payload,
+          updatedAt: new Date().toISOString(),
+        },
       };
 
     case 'UPDATE_PREFERENCES':
@@ -122,6 +210,7 @@ export type PreferenceUpdates = Partial<{
   soundMode: SoundMode;
   ambientSoundscape: AmbientSoundscape;
   ambientMix: AmbientMix;
+  ambientMixPresets: AmbientMixPreset[];
   reminderEnabled: boolean;
   reminderTimes: ReminderTime[];
   reminderQuietWeekends: boolean;
@@ -135,6 +224,11 @@ interface AppContextValue {
   completeSession: (exerciseId: string, duration: number) => void;
   toggleFavorite: (exerciseId: string) => void;
   completeOnboarding: (goal?: 'calm' | 'focus' | 'energy') => void;
+  startProgram: (programId: ProgramId) => void;
+  saveAmbientPreset: (name?: string) => void;
+  applyAmbientPreset: (presetId: string) => void;
+  deleteAmbientPreset: (presetId: string) => void;
+  setWidgetSnapshot: (snapshot: Partial<WidgetSnapshot>) => void;
   updatePreferences: (prefs: PreferenceUpdates) => void;
   setExerciseDuration: (exerciseId: string, duration: number) => void;
   resetData: () => void;
@@ -174,6 +268,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     state.lastSessionDate,
   ]);
 
+  useEffect(() => {
+    if (state.isLoading) return;
+    syncWidgetSnapshot(state.widgetSnapshot);
+  }, [state.isLoading, state.widgetSnapshot]);
+
   const completeSession = useCallback((exerciseId: string, duration: number) => {
     dispatch({ type: 'COMPLETE_SESSION', payload: { exerciseId, duration } });
   }, []);
@@ -184,6 +283,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const completeOnboarding = useCallback((goal?: 'calm' | 'focus' | 'energy') => {
     dispatch({ type: 'COMPLETE_ONBOARDING', payload: goal });
+  }, []);
+
+  const startProgram = useCallback((programId: ProgramId) => {
+    dispatch({ type: 'START_PROGRAM', payload: programId });
+  }, []);
+
+  const saveAmbientPreset = useCallback((name?: string) => {
+    dispatch({ type: 'SAVE_AMBIENT_PRESET', payload: { name } });
+  }, []);
+
+  const applyAmbientPreset = useCallback((presetId: string) => {
+    dispatch({ type: 'APPLY_AMBIENT_PRESET', payload: presetId });
+  }, []);
+
+  const deleteAmbientPreset = useCallback((presetId: string) => {
+    dispatch({ type: 'DELETE_AMBIENT_PRESET', payload: presetId });
+  }, []);
+
+  const setWidgetSnapshot = useCallback((snapshot: Partial<WidgetSnapshot>) => {
+    dispatch({ type: 'SET_WIDGET_SNAPSHOT', payload: snapshot });
   }, []);
 
   const updatePreferences = useCallback((prefs: PreferenceUpdates) => {
@@ -205,6 +324,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         completeSession,
         toggleFavorite,
         completeOnboarding,
+        startProgram,
+        saveAmbientPreset,
+        applyAmbientPreset,
+        deleteAmbientPreset,
+        setWidgetSnapshot,
         updatePreferences,
         setExerciseDuration,
         resetData,

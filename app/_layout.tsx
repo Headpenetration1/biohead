@@ -49,6 +49,7 @@ function RootLayout() {
           <Stack.Screen name="index" />
           <Stack.Screen name="onboarding" options={{ animation: 'fade' }} />
           <Stack.Screen name="settings" options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="programs" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="history" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen
             name="exercise/[id]"

@@ -7,6 +7,7 @@ import { Colors } from '@/constants/colors';
 import { Typography } from '@/constants/typography';
 import { exercises } from '@/constants/exercises';
 import { useAppContext } from '@/context/AppContext';
+import { getBestTimeBucket, getLast7DayTrend } from '@/utils/historyInsights';
 
 function formatShortDate(iso: string): string {
   try {
@@ -75,6 +76,10 @@ export default function HistoryScreen() {
     const ex = exercises.find((e) => e.id === maxId);
     return ex ? { title: ex.title, count: max } : null;
   }, [exerciseCounts]);
+
+  const trend = useMemo(() => getLast7DayTrend(state.sessions), [state.sessions]);
+  const bestTime = useMemo(() => getBestTimeBucket(state.sessions), [state.sessions]);
+  const trendMax = useMemo(() => Math.max(1, ...trend.map((point) => point.minutes)), [trend]);
 
   const exportSessionsJson = useCallback(async () => {
     if (state.sessions.length === 0) return;
@@ -146,6 +151,37 @@ export default function HistoryScreen() {
           <Text style={styles.exportText}>Eksporter logg (JSON)</Text>
           <Text style={styles.exportArrow}>›</Text>
         </Pressable>
+      ) : null}
+
+      {state.sessions.length > 0 ? (
+        <>
+          <View style={styles.insightCard}>
+            <Text style={styles.insightTitle}>Siste 7 dager</Text>
+            <View style={styles.trendRow}>
+              {trend.map((point) => {
+                const label = point.date.slice(5);
+                const ratio = point.minutes / trendMax;
+                return (
+                  <View key={point.date} style={styles.trendItem}>
+                    <View style={styles.trendTrack}>
+                      <View style={[styles.trendFill, { height: `${Math.max(8, ratio * 100)}%` }]} />
+                    </View>
+                    <Text style={styles.trendValue}>{point.minutes}</Text>
+                    <Text style={styles.trendLabel}>{label}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+          <View style={styles.insightCard}>
+            <Text style={styles.insightTitle}>Beste tidspunkt</Text>
+            <Text style={styles.insightBody}>
+              {bestTime
+                ? `${bestTime.bucket} (${bestTime.count} økter)`
+                : 'Ingen data enda'}
+            </Text>
+          </View>
+        </>
       ) : null}
 
       <Text style={styles.sectionLabel}>Logg</Text>
@@ -277,6 +313,60 @@ const styles = StyleSheet.create({
   },
   exportArrow: {
     fontSize: 22,
+    color: Colors.textMuted,
+  },
+  insightCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(14,32,37,0.08)',
+    backgroundColor: 'rgba(14,32,37,0.04)',
+    padding: 12,
+    marginBottom: 12,
+  },
+  insightTitle: {
+    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textSecondary,
+    marginBottom: 8,
+  },
+  insightBody: {
+    fontFamily: Typography.fontFamily.bold,
+    fontSize: Typography.sizes.lg,
+    color: Colors.textPrimary,
+  },
+  trendRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: 6,
+  },
+  trendItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  trendTrack: {
+    height: 56,
+    width: 10,
+    borderRadius: 99,
+    backgroundColor: 'rgba(14,32,37,0.12)',
+    overflow: 'hidden',
+    justifyContent: 'flex-end',
+  },
+  trendFill: {
+    width: '100%',
+    borderRadius: 99,
+    backgroundColor: Colors.greenAccent,
+  },
+  trendValue: {
+    marginTop: 6,
+    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.sizes.xs,
+    color: Colors.textSecondary,
+  },
+  trendLabel: {
+    marginTop: 2,
+    fontFamily: Typography.fontFamily.regular,
+    fontSize: 10,
     color: Colors.textMuted,
   },
   sectionLabel: {

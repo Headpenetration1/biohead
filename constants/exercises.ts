@@ -9,17 +9,7 @@ export interface BreathingPattern {
 }
 
 export interface Exercise {
-  id:
-    | 'calm'
-    | 'focus'
-    | 'energy'
-    | 'sleep'
-    | 'balance'
-    | 'destress'
-    | 'triangle'
-    | 'slow'
-    | 'deepSigh'
-    | 'stretch';
+  id: ExerciseId;
   title: string;
   subtitle: string;
   description: string;
@@ -29,6 +19,18 @@ export interface Exercise {
   technique: string;
   defaultDuration: number;
 }
+
+export type ExerciseId =
+  | 'calm'
+  | 'focus'
+  | 'energy'
+  | 'sleep'
+  | 'balance'
+  | 'destress'
+  | 'triangle'
+  | 'slow'
+  | 'deepSigh'
+  | 'stretch';
 
 export const exercises: Exercise[] = [
   {

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, Text, ScrollView, StyleSheet, Image, Pressable } from 'react-native';
 import { useRouter, Redirect, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +15,7 @@ import Animated, {
 import { Colors } from '@/constants/colors';
 import { Typography } from '@/constants/typography';
 import { exercises } from '@/constants/exercises';
+import { getProgramById } from '@/constants/programs';
 import { useAppContext } from '@/context/AppContext';
 import { useHaptics } from '@/hooks/useHaptics';
 import { getAdaptiveRecommendation } from '@/utils/recommendation';
@@ -29,7 +30,7 @@ import StreakBadge from '@/components/StreakBadge';
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { state, toggleFavorite } = useAppContext();
+  const { state, toggleFavorite, setWidgetSnapshot } = useAppContext();
   const { light: hapticLight } = useHaptics(state.hapticsEnabled);
 
   const orb1TranslateY = useSharedValue(0);
@@ -111,6 +112,18 @@ export default function HomeScreen() {
   const totalMinutes = useMemo(() => getTotalMinutes(state.sessions), [state.sessions]);
   const progression = useMemo(() => getProgressionLevel(totalMinutes), [totalMinutes]);
   const weeklyCompletion = Math.min(weekMinutes / Math.max(1, state.weeklyGoalMinutes), 1);
+  const activeProgram = useMemo(() => getProgramById(state.activeProgram?.id), [state.activeProgram?.id]);
+  const activeProgramDay = useMemo(() => {
+    if (!activeProgram || !state.activeProgram) return undefined;
+    return activeProgram.days[state.activeProgram.currentDay - 1];
+  }, [activeProgram, state.activeProgram]);
+
+  useEffect(() => {
+    setWidgetSnapshot({
+      recommendedExerciseId: recommended?.exercise.id,
+      lastSessionExerciseId: lastSessionExercise?.id,
+    });
+  }, [recommended?.exercise.id, lastSessionExercise?.id, setWidgetSnapshot]);
 
   const showMainHeading = favoriteExercises.length > 0 && mainExercises.length > 0;
   const mainCardIndexOffset = favoriteExercises.length;
@@ -256,6 +269,48 @@ export default function HomeScreen() {
             </View>
           </View>
         </Animated.View>
+
+        {activeProgram && state.activeProgram && activeProgramDay ? (
+          <Animated.View entering={FadeInDown.delay(230).duration(500).springify()} style={styles.programWrap}>
+            <View style={styles.programCard}>
+              <View style={styles.programHeader}>
+                <Text style={styles.programTitle}>{activeProgram.title}</Text>
+                <Text style={styles.programBadge}>
+                  Dag {state.activeProgram.currentDay}/{activeProgram.days.length}
+                </Text>
+              </View>
+              <Text style={styles.programSub}>
+                Dagens steg: {activeProgramDay.label} · {activeProgramDay.duration}s
+              </Text>
+              <View style={styles.programActions}>
+                <Pressable
+                  onPress={() =>
+                    router.push({
+                      pathname: '/exercise/[id]',
+                      params: { id: activeProgramDay.exerciseId },
+                    })
+                  }
+                  style={styles.programBtn}
+                >
+                  <Text style={styles.programBtnText}>Åpne dagens øvelse</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => router.push('/programs' as Href)}
+                  style={styles.programBtnSecondary}
+                >
+                  <Text style={styles.programBtnSecondaryText}>Bytt program</Text>
+                </Pressable>
+              </View>
+            </View>
+          </Animated.View>
+        ) : (
+          <Animated.View entering={FadeInDown.delay(230).duration(500).springify()} style={styles.programWrap}>
+            <Pressable onPress={() => router.push('/programs' as Href)} style={styles.programCard}>
+              <Text style={styles.programTitle}>Guidede programmer</Text>
+              <Text style={styles.programSub}>Start et 7-dagers løp og bygg vane dag for dag.</Text>
+            </Pressable>
+          </Animated.View>
+        )}
 
         {favoriteExercises.length > 0 ? (
           <>
@@ -465,7 +520,7 @@ const styles = StyleSheet.create({
   },
   progressWrap: {
     alignSelf: 'stretch',
-    marginBottom: 28,
+    marginBottom: 14,
   },
   progressCard: {
     paddingVertical: 14,
@@ -510,6 +565,74 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 999,
     backgroundColor: Colors.greenAccent,
+  },
+  programWrap: {
+    alignSelf: 'stretch',
+    marginBottom: 24,
+  },
+  programCard: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    backgroundColor: 'rgba(14,32,37,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(14,32,37,0.08)',
+    gap: 10,
+  },
+  programHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  programTitle: {
+    fontFamily: Typography.fontFamily.bold,
+    fontSize: Typography.sizes.base,
+    color: Colors.textPrimary,
+  },
+  programBadge: {
+    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.sizes.xs,
+    color: Colors.greenAccent,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  programSub: {
+    fontFamily: Typography.fontFamily.regular,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textSecondary,
+  },
+  programActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  programBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: `${Colors.greenAccent}66`,
+    backgroundColor: `${Colors.greenAccent}18`,
+    alignItems: 'center',
+  },
+  programBtnText: {
+    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.sizes.sm,
+    color: Colors.greenAccent,
+  },
+  programBtnSecondary: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(14,32,37,0.1)',
+    backgroundColor: 'rgba(14,32,37,0.05)',
+    alignItems: 'center',
+  },
+  programBtnSecondaryText: {
+    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textSecondary,
   },
   greetingHint: {
     fontFamily: Typography.fontFamily.semibold,
