@@ -51,6 +51,7 @@ const SOUND_OPTIONS: { mode: SoundMode; label: string; sub: string }[] = [
 let audioModeReady = false;
 
 async function ensureAudioMode(): Promise<void> {
+  // Keep audio mode setup idempotent to avoid repeated native calls.
   if (audioModeReady) return;
   await Audio.setAudioModeAsync({
     playsInSilentModeIOS: true,
@@ -77,6 +78,7 @@ export default function SettingsScreen() {
   const previewRefs = useRef<Partial<Record<AmbientSoundscape, Audio.Sound>>>({});
 
   const stopPreview = useCallback(async () => {
+    // Always stop+unload previously created sounds to prevent leaks/overlap.
     const sounds = Object.values(previewRefs.current).filter(
       (sound): sound is Audio.Sound => sound != null
     );
@@ -110,6 +112,7 @@ export default function SettingsScreen() {
         await stopPreview();
         if (cancelled) return;
 
+        // Play every active track in the mix, otherwise fall back to selected solo soundscape.
         const activeMix = AMBIENT_SOUNDSCAPE_IDS.filter((id) => (state.ambientMix[id] ?? 0) > 0.01);
         const targets = activeMix.length > 0 ? activeMix : [state.ambientSoundscape];
 
@@ -119,6 +122,7 @@ export default function SettingsScreen() {
             volume: AMBIENT_SOUND_VOLUMES[id] * (state.ambientMix[id] ?? 1),
           });
           if (cancelled) {
+            // Cleanup immediately if UI state changed while loading.
             await sound.unloadAsync();
             return;
           }

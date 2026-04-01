@@ -132,6 +132,7 @@ function reducer(state: AppState, action: Action): AppState {
       const score = Math.max(1, Math.min(5, Math.round(action.payload)));
       const nextSessions = [...state.sessions];
       const lastIndex = nextSessions.length - 1;
+      // Effect-score is always attached to the most recently completed session.
       nextSessions[lastIndex] = { ...nextSessions[lastIndex], effectScore: score };
       return {
         ...state,
@@ -222,6 +223,7 @@ function reducer(state: AppState, action: Action): AppState {
       };
       return {
         ...state,
+        // Keep list short so Settings/Home stay fast and readable.
         savedSessions: [nextSetup, ...state.savedSessions].slice(0, 12),
       };
     }

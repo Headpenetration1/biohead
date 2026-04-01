@@ -37,6 +37,7 @@ export function getAdaptiveRecommendation({
   const totalSessions = sessions.length;
   const stress = typeof stressLevel === 'number' ? Math.max(1, Math.min(5, Math.round(stressLevel))) : undefined;
 
+  // Stress-driven overrides come first because they represent "right now" need.
   if (stress != null && stress >= 4) {
     return {
       exerciseId: pickExisting(exercises, 'destress', 'calm'),
