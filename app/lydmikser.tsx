@@ -118,10 +118,6 @@ export default function SoundMixerScreen() {
     (id: AmbientSoundscape, nextLevel: number) => {
       const clamped = Math.max(0, Math.min(1, nextLevel));
       const mix = { ...state.ambientMix, [id]: clamped };
-      const activeCount = AMBIENT_SOUNDSCAPE_IDS.filter((soundId) => (mix[soundId] ?? 0) > 0.01).length;
-      if (activeCount === 0) {
-        mix.wind = 1;
-      }
       updatePreferences({ ambientMix: mix, ambientSoundscape: id });
     },
     [state.ambientMix, updatePreferences]
@@ -162,7 +158,10 @@ export default function SoundMixerScreen() {
         </Pressable>
       </Animated.View>
 
-      <Text style={styles.title}>Lydmikser</Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.titleIcon}>🔊</Text>
+        <Text style={styles.title}>Lydmikser</Text>
+      </View>
       <View style={styles.card}>
         {SOUND_OPTIONS.map((opt, i) => (
           <View key={opt.mode}>
@@ -317,6 +316,15 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     marginBottom: 20,
     letterSpacing: -0.5,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  titleIcon: {
+    fontSize: 28,
+    marginBottom: 20,
   },
   card: {
     backgroundColor: 'rgba(14,32,37,0.03)',

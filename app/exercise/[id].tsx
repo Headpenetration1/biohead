@@ -145,7 +145,7 @@ export default function ExerciseDetailScreen() {
           accessibilityRole="button"
           accessibilityLabel="Åpne Lydmikser"
         >
-          <Text style={styles.soundMixerLinkText}>Åpne Lydmikser</Text>
+          <Text style={styles.soundMixerLinkText}>🔊 Åpne Lydmikser</Text>
         </Pressable>
         <Text style={styles.sectionLabel}>Stress før økt</Text>
         <View style={styles.stressRow}>

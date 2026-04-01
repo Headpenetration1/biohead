@@ -224,7 +224,7 @@ export default function HomeScreen() {
             accessibilityRole="button"
             accessibilityLabel="Åpne Lydmikser"
           >
-            <Text style={styles.soundQuickTitle}>Lydmikser</Text>
+            <Text style={styles.soundQuickTitle}>🔊 Lydmikser</Text>
             <Text style={styles.soundQuickSub}>Juster miks, forhåndslytt og bruk lagrede lydprofiler</Text>
           </Pressable>
         </Animated.View>

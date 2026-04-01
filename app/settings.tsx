@@ -168,7 +168,7 @@ export default function SettingsScreen() {
       <View style={styles.card}>
         <Pressable onPress={() => router.push('/lydmikser')} style={styles.linkRow}>
           <View style={styles.rowText}>
-            <Text style={styles.rowTitle}>Åpne Lydmikser</Text>
+            <Text style={styles.rowTitle}>🔊 Åpne Lydmikser</Text>
             <Text style={styles.rowSub}>Velg modus, forhåndslytt og lagre mikser</Text>
           </View>
           <Text style={styles.linkArrow}>›</Text>
