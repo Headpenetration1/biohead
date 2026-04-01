@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -13,12 +13,15 @@ import {
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
+import { Audio } from 'expo-av';
 import { Colors } from '@/constants/colors';
 import { Typography } from '@/constants/typography';
 import { useAppContext } from '@/context/AppContext';
 import type { ReminderTime, SoundMode } from '@/utils/storage';
 import {
   type AmbientSoundscape,
+  AMBIENT_SOUND_MODULES,
+  AMBIENT_SOUND_VOLUMES,
   AMBIENT_SOUNDSCAPE_IDS,
   AMBIENT_SOUNDSCAPE_OPTIONS,
 } from '@/constants/ambientSounds';
@@ -45,6 +48,19 @@ const SOUND_OPTIONS: { mode: SoundMode; label: string; sub: string }[] = [
   },
 ];
 
+let audioModeReady = false;
+
+async function ensureAudioMode(): Promise<void> {
+  if (audioModeReady) return;
+  await Audio.setAudioModeAsync({
+    playsInSilentModeIOS: true,
+    staysActiveInBackground: false,
+    shouldDuckAndroid: true,
+    playThroughEarpieceAndroid: false,
+  });
+  audioModeReady = true;
+}
+
 export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -56,6 +72,77 @@ export default function SettingsScreen() {
     applyAmbientPreset,
     deleteAmbientPreset,
   } = useAppContext();
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [previewBusy, setPreviewBusy] = useState(false);
+  const previewRefs = useRef<Partial<Record<AmbientSoundscape, Audio.Sound>>>({});
+
+  const stopPreview = useCallback(async () => {
+    const sounds = Object.values(previewRefs.current).filter(
+      (sound): sound is Audio.Sound => sound != null
+    );
+    previewRefs.current = {};
+    for (const sound of sounds) {
+      try {
+        await sound.stopAsync();
+      } catch {
+        /* ignore */
+      }
+      try {
+        await sound.unloadAsync();
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const runPreview = async () => {
+      if (!isPreviewing || state.soundMode !== 'ambient') {
+        await stopPreview();
+        return;
+      }
+      setPreviewBusy(true);
+      try {
+        await ensureAudioMode();
+        if (cancelled) return;
+        await stopPreview();
+        if (cancelled) return;
+
+        const activeMix = AMBIENT_SOUNDSCAPE_IDS.filter((id) => (state.ambientMix[id] ?? 0) > 0.01);
+        const targets = activeMix.length > 0 ? activeMix : [state.ambientSoundscape];
+
+        for (const id of targets) {
+          const { sound } = await Audio.Sound.createAsync(AMBIENT_SOUND_MODULES[id], {
+            isLooping: true,
+            volume: AMBIENT_SOUND_VOLUMES[id] * (state.ambientMix[id] ?? 1),
+          });
+          if (cancelled) {
+            await sound.unloadAsync();
+            return;
+          }
+          previewRefs.current[id] = sound;
+          await sound.playAsync();
+        }
+      } catch (error) {
+        console.warn('Ambient preview failed', error);
+      } finally {
+        if (!cancelled) setPreviewBusy(false);
+      }
+    };
+
+    void runPreview();
+    return () => {
+      cancelled = true;
+    };
+  }, [isPreviewing, state.soundMode, state.ambientMix, state.ambientSoundscape, stopPreview]);
+
+  useEffect(() => {
+    return () => {
+      void stopPreview();
+    };
+  }, [stopPreview]);
 
   const setAmbientLevel = useCallback(
     (id: AmbientSoundscape, nextLevel: number) => {
@@ -236,6 +323,29 @@ export default function SettingsScreen() {
         ))}
         {state.soundMode === 'ambient' ? (
           <>
+            <View style={styles.divider} />
+            <View style={styles.previewRow}>
+              <View style={styles.rowText}>
+                <Text style={styles.rowTitle}>Forhåndslytt miks</Text>
+                <Text style={styles.rowSub}>Hør lydene før du starter en økt</Text>
+              </View>
+              <Pressable
+                onPress={() => setIsPreviewing((prev) => !prev)}
+                disabled={previewBusy}
+                style={({ pressed }) => [
+                  styles.previewBtn,
+                  isPreviewing && styles.previewBtnActive,
+                  pressed && styles.previewBtnPressed,
+                  previewBusy && styles.previewBtnDisabled,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={isPreviewing ? 'Stopp forhåndslytting' : 'Start forhåndslytting'}
+              >
+                <Text style={[styles.previewBtnText, isPreviewing && styles.previewBtnTextActive]}>
+                  {previewBusy ? 'Laster…' : isPreviewing ? 'Stopp' : 'Spill av'}
+                </Text>
+              </Pressable>
+            </View>
             <View style={styles.divider} />
             <Text style={styles.presetLabel}>Hurtigvalg (solo)</Text>
             <View style={styles.soundscapeList}>
@@ -556,6 +666,40 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 14,
+  },
+  previewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  previewBtn: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(14,32,37,0.16)',
+    backgroundColor: 'rgba(14,32,37,0.06)',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  previewBtnActive: {
+    borderColor: `${Colors.greenAccent}88`,
+    backgroundColor: `${Colors.greenAccent}22`,
+  },
+  previewBtnPressed: {
+    opacity: 0.85,
+  },
+  previewBtnDisabled: {
+    opacity: 0.6,
+  },
+  previewBtnText: {
+    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textSecondary,
+  },
+  previewBtnTextActive: {
+    color: Colors.greenAccent,
   },
   radio: {
     width: 22,
