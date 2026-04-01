@@ -111,25 +111,7 @@ export function useBreathAudio(
           ambientRefs.current[id] = sound;
           await sound.playAsync();
         }
-        if (activeMix.length === 0) {
-          const fallbackModule = AMBIENT_SOUND_MODULES[ambientSoundscape];
-          const fallbackVolume = AMBIENT_SOUND_VOLUMES[ambientSoundscape];
-          const { sound } = await Audio.Sound.createAsync(
-            fallbackModule,
-            { isLooping: true, volume: fallbackVolume },
-            (status: AVPlaybackStatus) => {
-              if (!status.isLoaded && 'error' in status && status.error) {
-                console.warn('Ambient audio error', status.error);
-              }
-            }
-          );
-          if (cancelled) {
-            await sound.unloadAsync();
-            return;
-          }
-          ambientRefs.current[ambientSoundscape] = sound;
-          await sound.playAsync();
-        }
+        // No active mix tracks => stay silent in ambient mode.
       } catch (e) {
         console.warn('Failed to start ambient audio', e);
       }

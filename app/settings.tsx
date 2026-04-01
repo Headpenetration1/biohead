@@ -119,9 +119,9 @@ export default function SettingsScreen() {
         await stopPreview();
         if (cancelled) return;
 
-        // Play every active track in the mix, otherwise fall back to selected solo soundscape.
+        // Play every active track in the mix. If none are active, keep preview silent.
         const activeMix = AMBIENT_SOUNDSCAPE_IDS.filter((id) => (state.ambientMix[id] ?? 0) > 0.01);
-        const targets = activeMix.length > 0 ? activeMix : [state.ambientSoundscape];
+        const targets = activeMix;
 
         for (const id of targets) {
           const { sound } = await Audio.Sound.createAsync(AMBIENT_SOUND_MODULES[id], {
@@ -171,8 +171,15 @@ export default function SettingsScreen() {
   const setAmbientSolo = useCallback(
     (id: AmbientSoundscape) => {
       if (isSoloMix(state.ambientMix, id)) {
-        // Remove quick-select highlight without restoring previous mix.
-        updatePreferences({ ambientSoundscape: 'neutral' });
+        // Remove quick-select highlight and silence the solo selection.
+        const cleared = AMBIENT_SOUNDSCAPE_IDS.reduce<Record<AmbientSoundscape, number>>(
+          (acc, soundId) => ({
+            ...acc,
+            [soundId]: 0,
+          }),
+          {} as Record<AmbientSoundscape, number>
+        );
+        updatePreferences({ ambientMix: cleared, ambientSoundscape: 'neutral' });
         return;
       }
       const solo = AMBIENT_SOUNDSCAPE_IDS.reduce<Record<AmbientSoundscape, number>>(
