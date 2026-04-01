@@ -73,7 +73,7 @@ Se [eas.json](eas.json) for profiler (`development`, `preview`, `production`).
 
 ### Ikon
 
-Master-ikon skal være **1024×1024** for butikken. Prosjektet bruker [assets/icon.png](assets/icon.png) (oppgradert fra kilde ved behov).
+Master-ikon skal være **1024×1024** for butikken. Prosjektet bruker [assets/icon-app-transparent.png](assets/icon-app-transparent.png) (oppgradert fra kilde ved behov).
 
 ### Deeplink
 
