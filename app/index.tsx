@@ -363,9 +363,9 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(14,32,37,0.05)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(14,32,37,0.06)',
   },
   headerIcon: {
     fontSize: 20,
@@ -389,13 +389,13 @@ const styles = StyleSheet.create({
   logoBio: {
     fontFamily: Typography.fontFamily.medium,
     fontSize: 42,
-    color: Colors.textPrimary,
+    color: Colors.greenAccent,
     letterSpacing: -2,
   },
   logoHead: {
     fontFamily: Typography.fontFamily.bold,
     fontSize: 42,
-    color: Colors.greenAccent,
+    color: Colors.textPrimary,
     letterSpacing: -2,
   },
   greetingContainer: {
@@ -410,7 +410,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 18,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(14,32,37,0.04)',
     borderWidth: 1,
   },
   recoKicker: {
@@ -439,7 +439,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 18,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(14,32,37,0.04)',
     borderWidth: 1,
   },
   resumeCardPressed: {
@@ -471,9 +471,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(14,32,37,0.04)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(14,32,37,0.08)',
     gap: 8,
   },
   progressHeaderRow: {
@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
   progressBarTrack: {
     height: 8,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(14,32,37,0.12)',
     overflow: 'hidden',
   },
   progressBarFill: {
@@ -550,10 +550,10 @@ const styles = StyleSheet.create({
   counterPill: {
     paddingVertical: 8,
     paddingHorizontal: 16,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: 'rgba(14,32,37,0.03)',
     borderRadius: 100,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: 'rgba(14,32,37,0.05)',
   },
   counterText: {
     fontFamily: Typography.fontFamily.medium,

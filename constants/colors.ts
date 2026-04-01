@@ -1,33 +1,33 @@
 export const Colors = {
-  // Primære brand-farger (Midnight Glassmorphism)
-  darkBase: '#020508',         // Deepest midnight
-  darkBaseLighter: '#091016',  // Slightly lighter background
-  darkBaseCard: 'rgba(255, 255, 255, 0.05)', // Glassy transparent card background
-  greenAccent: '#00F0FF',      // Neon cyan accent instead of muted green
-  greenAccentHover: '#33F3FF',
-  greenAccentSoft: 'rgba(0, 240, 255, 0.15)',
-  deepBlue: '#0070F3',         // Vibrant secondary blue
-  lightBeige: '#F8FAFC',       // Crisp almost-white for primary text
+  // Primære brand-farger
+  darkBase: '#FFF9ED', // Main background (beige)
+  darkBaseLighter: '#FFF9ED',
+  darkBaseCard: 'rgba(14, 32, 37, 0.04)',
+  greenAccent: '#46917c',
+  greenAccentHover: '#5ca08d',
+  greenAccentSoft: 'rgba(70, 145, 124, 0.18)',
+  deepBlue: '#1e495d',
+  lightBeige: '#FFF9ED',
 
   // Tekst
-  textPrimary: '#F8FAFC',
-  textSecondary: 'rgba(248, 250, 252, 0.65)',
-  textMuted: 'rgba(248, 250, 252, 0.4)',
+  textPrimary: '#0e2025',
+  textSecondary: 'rgba(14, 32, 37, 0.75)',
+  textMuted: 'rgba(14, 32, 37, 0.55)',
 
-  // Modusfarger - Høy kontrast for glowing effekter
-  calmGlow: '#00F0FF',    // Neon Cyan
-  focusGlow: '#B5179E',   // Neon Pink/Purple
-  energyGlow: '#FF9E00',  // Vivid Gold / Orange
-  energyGold: '#FF9E00',
-  sleepGlow: '#818CF8',   // Soft Indigo
-  balanceGlow: '#10B981', // Vibrant Mint
-  destressGlow: '#F43F5E',// Sunset Coral
-  triangleGlow: '#A78BFA', // Soft violet
-  slowGlow: '#38BDF8',     // Sky blue
-  deepSighGlow: '#FB7185', // Rose
-  stretchGlow: '#C084FC',  // Bright purple
+  // Modusfarger innenfor samme palett
+  calmGlow: '#46917c',
+  focusGlow: '#1e495d',
+  energyGlow: '#46917c',
+  energyGold: '#46917c',
+  sleepGlow: '#1e495d',
+  balanceGlow: '#46917c',
+  destressGlow: '#1e495d',
+  triangleGlow: '#1e495d',
+  slowGlow: '#46917c',
+  deepSighGlow: '#1e495d',
+  stretchGlow: '#46917c',
 
   // System
-  error: '#FF2A55',       // Vibrant error red
-  success: '#00F0FF',     // Use base accent for success
+  error: '#1e495d',
+  success: '#46917c',
 } as const;

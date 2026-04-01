@@ -60,11 +60,11 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     gap: 8,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: 'rgba(14,32,37,0.03)',
     padding: 5,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(14,32,37,0.06)',
   },
   option: {
     flex: 1,

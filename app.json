@@ -9,7 +9,7 @@
     "scheme": "biohead",
     "userInterfaceStyle": "dark",
     "splash": {
-      "backgroundColor": "#020508",
+      "backgroundColor": "#FFF9ED",
       "resizeMode": "contain"
     },
     "assetBundlePatterns": [
@@ -30,7 +30,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#020508"
+        "backgroundColor": "#FFF9ED"
       },
       "package": "no.biohead.app",
       "versionCode": 1

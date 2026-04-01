@@ -376,10 +376,10 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingVertical: 10,
     paddingHorizontal: 14,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(14,32,37,0.05)',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: 'rgba(14,32,37,0.05)',
     marginBottom: 24,
   },
   backArrow: {
@@ -409,10 +409,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   card: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: 'rgba(14,32,37,0.03)',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(14,32,37,0.06)',
     paddingVertical: 8,
     marginBottom: 8,
   },
@@ -440,7 +440,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(14,32,37,0.08)',
     marginLeft: 16,
   },
   soundRow: {
@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: 'rgba(14,32,37,0.2)',
   },
   radioOn: {
     borderColor: Colors.greenAccent,
@@ -480,9 +480,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(14,32,37,0.05)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(14,32,37,0.08)',
   },
   presetChipActive: {
     borderColor: Colors.greenAccent,
@@ -505,9 +505,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 14,
     borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(14,32,37,0.04)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(14,32,37,0.08)',
     gap: 4,
   },
   soundscapeChipActive: {

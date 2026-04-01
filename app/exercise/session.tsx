@@ -279,10 +279,10 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 10,
     paddingHorizontal: 16,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(14,32,37,0.05)',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: 'rgba(14,32,37,0.05)',
   },
   topButtonIcon: {
     fontSize: 12,
@@ -365,11 +365,11 @@ const styles = StyleSheet.create({
   modalContent: {
     width: '85%',
     maxWidth: 320,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(14,32,37,0.05)',
     borderRadius: 28,
     padding: 32,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(14,32,37,0.1)',
   },
   modalTitle: {
     fontFamily: Typography.fontFamily.bold,
@@ -393,11 +393,11 @@ const styles = StyleSheet.create({
   modalButtonSecondary: {
     flex: 1,
     paddingVertical: 16,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(14,32,37,0.05)',
     borderRadius: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(14,32,37,0.08)',
   },
   modalButtonSecondaryText: {
     fontFamily: Typography.fontFamily.bold,

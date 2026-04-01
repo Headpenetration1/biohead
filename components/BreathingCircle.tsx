@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
     width: 180,
     height: 3,
     borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(14,32,37,0.06)',
     overflow: 'hidden',
   },
   progressBarFill: {
