@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "description": "Pusteøvelser for ro, fokus og energi. Din daglige mindfulness-kompanjong.",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icon-app-transparent.png",
     "scheme": "biohead",
     "userInterfaceStyle": "dark",
     "splash": {
@@ -29,7 +29,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
+        "foregroundImage": "./assets/icon-app-transparent.png",
         "backgroundColor": "#FFF9ED"
       },
       "package": "no.biohead.app",
