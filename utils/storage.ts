@@ -45,6 +45,8 @@ export interface SessionRecord {
   exerciseId: string;
   duration: number;
   completedAt: string;
+  stressBefore?: number;
+  effectScore?: number;
 }
 
 export interface ReminderTime {
@@ -69,6 +71,19 @@ export interface WidgetSnapshot {
   recommendedExerciseId?: string;
   lastSessionExerciseId?: string;
   updatedAt?: string;
+}
+
+export interface SavedSession {
+  id: string;
+  name: string;
+  exerciseId: string;
+  duration: number;
+  stressLevel?: number;
+}
+
+export interface StressCheckSnapshot {
+  level: number;
+  updatedAt: string;
 }
 
 function clampHour(value: unknown, fallback: number): number {
@@ -151,6 +166,45 @@ function parseWidgetSnapshot(raw: unknown): WidgetSnapshot {
   };
 }
 
+function clampStressLevel(raw: unknown): number | undefined {
+  if (typeof raw !== 'number' || Number.isNaN(raw)) return undefined;
+  return Math.max(1, Math.min(5, Math.round(raw)));
+}
+
+function parseSavedSessions(raw: unknown): SavedSession[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((entry) => {
+      if (entry == null || typeof entry !== 'object') return null;
+      const cast = entry as Partial<SavedSession>;
+      if (
+        typeof cast.id !== 'string' ||
+        typeof cast.name !== 'string' ||
+        typeof cast.exerciseId !== 'string' ||
+        typeof cast.duration !== 'number'
+      ) {
+        return null;
+      }
+      const stressLevel = clampStressLevel(cast.stressLevel);
+      return {
+        id: cast.id,
+        name: cast.name.trim().slice(0, 40) || 'Lagret økt',
+        exerciseId: cast.exerciseId,
+        duration: Math.max(15, Math.min(60 * 30, Math.round(cast.duration))),
+        ...(stressLevel != null ? { stressLevel } : {}),
+      };
+    })
+    .filter((entry): entry is SavedSession => entry != null);
+}
+
+function parseStressSnapshot(raw: unknown): StressCheckSnapshot | undefined {
+  if (raw == null || typeof raw !== 'object') return undefined;
+  const cast = raw as Partial<StressCheckSnapshot>;
+  const level = clampStressLevel(cast.level);
+  if (!level || typeof cast.updatedAt !== 'string') return undefined;
+  return { level, updatedAt: cast.updatedAt };
+}
+
 export interface AppData {
   currentStreak: number;
   lastSessionDate: string;
@@ -174,6 +228,8 @@ export interface AppData {
   ambientMixPresets: AmbientMixPreset[];
   activeProgram?: ActiveProgramState;
   widgetSnapshot: WidgetSnapshot;
+  savedSessions: SavedSession[];
+  stressCheck?: StressCheckSnapshot;
   weeklyGoalMinutes: number;
   /** iOS: log Mindful Session to Apple Health when a session completes */
   healthSyncEnabled: boolean;
@@ -199,6 +255,8 @@ export const defaultAppData: AppData = {
   ambientMixPresets: [],
   activeProgram: undefined,
   widgetSnapshot: {},
+  savedSessions: [],
+  stressCheck: undefined,
   weeklyGoalMinutes: 40,
   healthSyncEnabled: false,
 };
@@ -224,6 +282,8 @@ export async function loadAppData(): Promise<AppData> {
         ambientMixPresets: parseAmbientMixPresets(parsed.ambientMixPresets),
         activeProgram: parseActiveProgram(parsed.activeProgram),
         widgetSnapshot: parseWidgetSnapshot(parsed.widgetSnapshot),
+        savedSessions: parseSavedSessions((parsed as { savedSessions?: unknown }).savedSessions),
+        stressCheck: parseStressSnapshot((parsed as { stressCheck?: unknown }).stressCheck),
         exerciseDurationPrefs: {
           ...defaultAppData.exerciseDurationPrefs,
           ...(parsed.exerciseDurationPrefs ?? {}),

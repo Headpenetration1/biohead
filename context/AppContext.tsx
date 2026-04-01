@@ -9,7 +9,9 @@ import {
   type AmbientMixPreset,
   AppData,
   ReminderTime,
+  type SavedSession,
   SessionRecord,
+  type StressCheckSnapshot,
   type WidgetSnapshot,
   defaultAppData,
   loadAppData,
@@ -32,7 +34,11 @@ const baseInitial: AppState = {
 
 type Action =
   | { type: 'LOAD_DATA'; payload: AppData }
-  | { type: 'COMPLETE_SESSION'; payload: { exerciseId: string; duration: number } }
+  | {
+      type: 'COMPLETE_SESSION';
+      payload: { exerciseId: string; duration: number; stressBefore?: number };
+    }
+  | { type: 'RATE_LAST_SESSION'; payload: number }
   | { type: 'TOGGLE_FAVORITE'; payload: string }
   | { type: 'COMPLETE_ONBOARDING'; payload?: 'calm' | 'focus' | 'energy' }
   | { type: 'START_PROGRAM'; payload: ProgramId }
@@ -40,6 +46,12 @@ type Action =
   | { type: 'APPLY_AMBIENT_PRESET'; payload: string }
   | { type: 'DELETE_AMBIENT_PRESET'; payload: string }
   | { type: 'SET_WIDGET_SNAPSHOT'; payload: Partial<WidgetSnapshot> }
+  | {
+      type: 'SAVE_SESSION_SETUP';
+      payload: { exerciseId: string; duration: number; stressLevel?: number; name?: string };
+    }
+  | { type: 'DELETE_SESSION_SETUP'; payload: string }
+  | { type: 'SET_STRESS_CHECK'; payload?: StressCheckSnapshot }
   | {
       type: 'UPDATE_PREFERENCES';
       payload: Partial<{
@@ -81,6 +93,7 @@ function reducer(state: AppState, action: Action): AppState {
         exerciseId: action.payload.exerciseId,
         duration: action.payload.duration,
         completedAt: new Date().toISOString(),
+        stressBefore: action.payload.stressBefore,
       };
 
       return {
@@ -111,6 +124,18 @@ function reducer(state: AppState, action: Action): AppState {
           lastSessionExerciseId: action.payload.exerciseId,
           updatedAt: new Date().toISOString(),
         },
+      };
+    }
+
+    case 'RATE_LAST_SESSION': {
+      if (state.sessions.length === 0) return state;
+      const score = Math.max(1, Math.min(5, Math.round(action.payload)));
+      const nextSessions = [...state.sessions];
+      const lastIndex = nextSessions.length - 1;
+      nextSessions[lastIndex] = { ...nextSessions[lastIndex], effectScore: score };
+      return {
+        ...state,
+        sessions: nextSessions,
       };
     }
 
@@ -184,6 +209,35 @@ function reducer(state: AppState, action: Action): AppState {
         },
       };
 
+    case 'SAVE_SESSION_SETUP': {
+      const nextId = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+      const ex = action.payload.exerciseId;
+      const fallbackName = `Økt ${state.savedSessions.length + 1}`;
+      const nextSetup: SavedSession = {
+        id: nextId,
+        name: action.payload.name?.trim().slice(0, 40) || fallbackName,
+        exerciseId: ex,
+        duration: Math.max(15, Math.round(action.payload.duration)),
+        stressLevel: action.payload.stressLevel,
+      };
+      return {
+        ...state,
+        savedSessions: [nextSetup, ...state.savedSessions].slice(0, 12),
+      };
+    }
+
+    case 'DELETE_SESSION_SETUP':
+      return {
+        ...state,
+        savedSessions: state.savedSessions.filter((entry) => entry.id !== action.payload),
+      };
+
+    case 'SET_STRESS_CHECK':
+      return {
+        ...state,
+        stressCheck: action.payload,
+      };
+
     case 'UPDATE_PREFERENCES':
       return { ...state, ...action.payload };
 
@@ -221,7 +275,8 @@ export type PreferenceUpdates = Partial<{
 
 interface AppContextValue {
   state: AppState;
-  completeSession: (exerciseId: string, duration: number) => void;
+  completeSession: (exerciseId: string, duration: number, stressBefore?: number) => void;
+  rateLastSession: (effectScore: number) => void;
   toggleFavorite: (exerciseId: string) => void;
   completeOnboarding: (goal?: 'calm' | 'focus' | 'energy') => void;
   startProgram: (programId: ProgramId) => void;
@@ -229,6 +284,14 @@ interface AppContextValue {
   applyAmbientPreset: (presetId: string) => void;
   deleteAmbientPreset: (presetId: string) => void;
   setWidgetSnapshot: (snapshot: Partial<WidgetSnapshot>) => void;
+  saveSessionSetup: (payload: {
+    exerciseId: string;
+    duration: number;
+    stressLevel?: number;
+    name?: string;
+  }) => void;
+  deleteSessionSetup: (sessionId: string) => void;
+  setStressCheck: (level: number) => void;
   updatePreferences: (prefs: PreferenceUpdates) => void;
   setExerciseDuration: (exerciseId: string, duration: number) => void;
   resetData: () => void;
@@ -273,8 +336,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     syncWidgetSnapshot(state.widgetSnapshot);
   }, [state.isLoading, state.widgetSnapshot]);
 
-  const completeSession = useCallback((exerciseId: string, duration: number) => {
-    dispatch({ type: 'COMPLETE_SESSION', payload: { exerciseId, duration } });
+  const completeSession = useCallback((exerciseId: string, duration: number, stressBefore?: number) => {
+    dispatch({ type: 'COMPLETE_SESSION', payload: { exerciseId, duration, stressBefore } });
+  }, []);
+
+  const rateLastSession = useCallback((effectScore: number) => {
+    dispatch({ type: 'RATE_LAST_SESSION', payload: effectScore });
   }, []);
 
   const toggleFavorite = useCallback((exerciseId: string) => {
@@ -305,6 +372,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'SET_WIDGET_SNAPSHOT', payload: snapshot });
   }, []);
 
+  const saveSessionSetup = useCallback(
+    (payload: { exerciseId: string; duration: number; stressLevel?: number; name?: string }) => {
+      dispatch({ type: 'SAVE_SESSION_SETUP', payload });
+    },
+    []
+  );
+
+  const deleteSessionSetup = useCallback((sessionId: string) => {
+    dispatch({ type: 'DELETE_SESSION_SETUP', payload: sessionId });
+  }, []);
+
+  const setStressCheck = useCallback((level: number) => {
+    const safeLevel = Math.max(1, Math.min(5, Math.round(level)));
+    dispatch({
+      type: 'SET_STRESS_CHECK',
+      payload: {
+        level: safeLevel,
+        updatedAt: new Date().toISOString(),
+      },
+    });
+  }, []);
+
   const updatePreferences = useCallback((prefs: PreferenceUpdates) => {
     dispatch({ type: 'UPDATE_PREFERENCES', payload: prefs });
   }, []);
@@ -322,6 +411,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       value={{
         state,
         completeSession,
+        rateLastSession,
         toggleFavorite,
         completeOnboarding,
         startProgram,
@@ -329,6 +419,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         applyAmbientPreset,
         deleteAmbientPreset,
         setWidgetSnapshot,
+        saveSessionSetup,
+        deleteSessionSetup,
+        setStressCheck,
         updatePreferences,
         setExerciseDuration,
         resetData,

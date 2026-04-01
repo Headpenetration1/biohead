@@ -80,6 +80,23 @@ export default function HistoryScreen() {
   const trend = useMemo(() => getLast7DayTrend(state.sessions), [state.sessions]);
   const bestTime = useMemo(() => getBestTimeBucket(state.sessions), [state.sessions]);
   const trendMax = useMemo(() => Math.max(1, ...trend.map((point) => point.minutes)), [trend]);
+  const avgEffectScore = useMemo(() => {
+    const scored = state.sessions.filter((entry) => typeof entry.effectScore === 'number');
+    if (scored.length === 0) return null;
+    const total = scored.reduce((acc, entry) => acc + (entry.effectScore ?? 0), 0);
+    return total / scored.length;
+  }, [state.sessions]);
+  const avgStressDelta = useMemo(() => {
+    const paired = state.sessions.filter(
+      (entry) => typeof entry.effectScore === 'number' && typeof entry.stressBefore === 'number'
+    );
+    if (paired.length === 0) return null;
+    const total = paired.reduce(
+      (acc, entry) => acc + ((entry.stressBefore ?? 0) - (entry.effectScore ?? 0)),
+      0
+    );
+    return total / paired.length;
+  }, [state.sessions]);
 
   const exportSessionsJson = useCallback(async () => {
     if (state.sessions.length === 0) return;
@@ -180,6 +197,20 @@ export default function HistoryScreen() {
                 ? `${bestTime.bucket} (${bestTime.count} økter)`
                 : 'Ingen data enda'}
             </Text>
+          </View>
+          <View style={styles.insightCard}>
+            <Text style={styles.insightTitle}>Post-økt effekt</Text>
+            <Text style={styles.insightBody}>
+              {avgEffectScore != null
+                ? `${avgEffectScore.toFixed(1)}/5 i snitt`
+                : 'Ingen effekt-score enda'}
+            </Text>
+            {avgStressDelta != null ? (
+              <Text style={styles.insightSub}>
+                Endring mot stress før økt: {avgStressDelta > 0 ? '-' : '+'}
+                {Math.abs(avgStressDelta).toFixed(1)}
+              </Text>
+            ) : null}
           </View>
         </>
       ) : null}
@@ -333,6 +364,12 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.bold,
     fontSize: Typography.sizes.lg,
     color: Colors.textPrimary,
+  },
+  insightSub: {
+    marginTop: 4,
+    fontFamily: Typography.fontFamily.regular,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textMuted,
   },
   trendRow: {
     flexDirection: 'row',

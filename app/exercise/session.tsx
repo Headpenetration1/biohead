@@ -20,20 +20,23 @@ import HapticButton from '@/components/HapticButton';
 export default function SessionScreen() {
   useKeepAwake();
 
-  const { id, duration: durationParam } = useLocalSearchParams<{
+  const { id, duration: durationParam, stress } = useLocalSearchParams<{
     id: string;
     duration: string;
+    stress?: string;
   }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { state, completeSession } = useAppContext();
+  const { state, completeSession, rateLastSession } = useAppContext();
   const { success, light, medium } = useHaptics(state.hapticsEnabled);
 
   const exercise = exercises.find((e) => e.id === id);
   const totalDuration = Number(durationParam) || 60;
+  const stressBefore = stress != null ? Math.max(1, Math.min(5, Math.round(Number(stress) || 3))) : undefined;
 
   const [showQuitModal, setShowQuitModal] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+  const [effectScore, setEffectScore] = useState<number | null>(null);
 
   const engine = useBreathingEngine({
     pattern: exercise?.pattern ?? [],
@@ -86,7 +89,7 @@ export default function SessionScreen() {
       setIsComplete(true);
       success();
       if (exercise) {
-        completeSession(exercise.id, totalDuration);
+        completeSession(exercise.id, totalDuration, stressBefore);
         void logMindfulSessionIfEnabled(state.healthSyncEnabled, totalDuration);
       }
     }
@@ -96,6 +99,7 @@ export default function SessionScreen() {
     isComplete,
     exercise,
     totalDuration,
+    stressBefore,
     completeSession,
     success,
     state.healthSyncEnabled,
@@ -147,6 +151,30 @@ export default function SessionScreen() {
 
         <Animated.View entering={BounceIn.delay(600).duration(500)}>
           <StreakBadge count={state.currentStreak} large />
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(650).duration(500).springify()} style={styles.effectWrap}>
+          <Text style={styles.effectTitle}>Hvordan føles du nå?</Text>
+          <Text style={styles.effectSub}>Effekt-score etter økten (1-5)</Text>
+          <View style={styles.effectRow}>
+            {[1, 2, 3, 4, 5].map((score) => {
+              const active = effectScore === score;
+              return (
+                <Pressable
+                  key={score}
+                  onPress={() => {
+                    setEffectScore(score);
+                    rateLastSession(score);
+                  }}
+                  style={[styles.effectChip, active && styles.effectChipActive]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Sett effekt-score ${score} av 5`}
+                >
+                  <Text style={[styles.effectChipText, active && styles.effectChipTextActive]}>{score}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </Animated.View>
 
         <Animated.View
@@ -360,6 +388,46 @@ const styles = StyleSheet.create({
     maxWidth: 320,
     marginTop: 48,
     gap: 16,
+  },
+  effectWrap: {
+    marginTop: 18,
+    alignItems: 'center',
+    gap: 4,
+  },
+  effectTitle: {
+    fontFamily: Typography.fontFamily.semibold,
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.base,
+  },
+  effectSub: {
+    fontFamily: Typography.fontFamily.regular,
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.sm,
+  },
+  effectRow: {
+    marginTop: 6,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  effectChip: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(14,32,37,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  effectChipActive: {
+    borderColor: `${Colors.greenAccent}88`,
+    backgroundColor: `${Colors.greenAccent}22`,
+  },
+  effectChipText: {
+    fontFamily: Typography.fontFamily.semibold,
+    color: Colors.textSecondary,
+  },
+  effectChipTextActive: {
+    color: Colors.greenAccent,
   },
 
   modalOverlay: {

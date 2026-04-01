@@ -7,6 +7,7 @@ interface RecommendationInput {
   sessions: SessionRecord[];
   exercises: Exercise[];
   goal: Goal;
+  stressLevel?: number;
   now?: Date;
 }
 
@@ -28,11 +29,27 @@ export function getAdaptiveRecommendation({
   sessions,
   exercises,
   goal,
+  stressLevel,
   now = new Date(),
 }: RecommendationInput): ExerciseRecommendation | null {
   if (exercises.length === 0) return null;
   const hour = now.getHours();
   const totalSessions = sessions.length;
+  const stress = typeof stressLevel === 'number' ? Math.max(1, Math.min(5, Math.round(stressLevel))) : undefined;
+
+  if (stress != null && stress >= 4) {
+    return {
+      exerciseId: pickExisting(exercises, 'destress', 'calm'),
+      reason: 'Høyt stress nå: velg en rask nedregulerende øvelse først.',
+    };
+  }
+
+  if (stress != null && stress <= 2 && hour >= 6 && hour < 18) {
+    return {
+      exerciseId: pickExisting(exercises, 'focus', 'energy'),
+      reason: 'Lavt stress + dagtid: utnytt momentum med fokusert pust.',
+    };
+  }
 
   if (hour >= 21 || hour < 6) {
     return {

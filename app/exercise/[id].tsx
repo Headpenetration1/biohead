@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -20,11 +20,12 @@ export default function ExerciseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { state, toggleFavorite, setExerciseDuration } = useAppContext();
+  const { state, toggleFavorite, setExerciseDuration, saveSessionSetup, setStressCheck } = useAppContext();
   const { light } = useHaptics(state.hapticsEnabled);
 
   const exercise = exercises.find((e) => e.id === id);
   const [duration, setDuration] = useState(60);
+  const [stressBefore, setStressBefore] = useState(3);
 
   useEffect(() => {
     const ex = exercises.find((e) => e.id === id);
@@ -32,6 +33,12 @@ export default function ExerciseDetailScreen() {
     const saved = state.exerciseDurationPrefs[id];
     setDuration(saved != null ? saved : ex.defaultDuration);
   }, [id, state.exerciseDurationPrefs]);
+
+  useEffect(() => {
+    if (state.stressCheck?.level != null) {
+      setStressBefore(state.stressCheck.level);
+    }
+  }, [state.stressCheck?.level]);
 
   const onDurationChange = useCallback(
     (value: number) => {
@@ -132,15 +139,47 @@ export default function ExerciseDetailScreen() {
         entering={FadeInDown.delay(300).duration(500).springify()}
         style={styles.startSection}
       >
+        <Text style={styles.sectionLabel}>Stress før økt</Text>
+        <View style={styles.stressRow}>
+          {[1, 2, 3, 4, 5].map((level) => {
+            const active = stressBefore === level;
+            return (
+              <Pressable
+                key={level}
+                onPress={() => setStressBefore(level)}
+                style={[styles.stressChip, active && styles.stressChipActive]}
+                accessibilityRole="button"
+                accessibilityLabel={`Velg stressnivå ${level} av 5`}
+              >
+                <Text style={[styles.stressChipText, active && styles.stressChipTextActive]}>{level}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
         <HapticButton
           title="Start øvelse"
           color={exercise.glowColor}
-          onPress={() =>
+          onPress={() => {
+            setStressCheck(stressBefore);
             router.push({
               pathname: '/exercise/session',
-              params: { id: exercise.id, duration: String(duration) },
-            })
-          }
+              params: { id: exercise.id, duration: String(duration), stress: String(stressBefore) },
+            });
+          }}
+          style={{ width: '100%', marginTop: 12 }}
+        />
+        <HapticButton
+          title="Lagre dette oppsettet"
+          variant="secondary"
+          onPress={() => {
+            saveSessionSetup({
+              exerciseId: exercise.id,
+              duration,
+              stressLevel: stressBefore,
+              name: `${exercise.title} ${duration}s`,
+            });
+            Alert.alert('Lagret', 'Oppsettet er lagret under "Lagrede økter" på hjem.');
+          }}
           style={{ width: '100%' }}
         />
       </Animated.View>
@@ -279,6 +318,32 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 340,
     marginBottom: 32,
+    gap: 10,
+  },
+  stressRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignSelf: 'center',
+  },
+  stressChip: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: 'rgba(14,32,37,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stressChipActive: {
+    borderColor: `${Colors.greenAccent}88`,
+    backgroundColor: `${Colors.greenAccent}22`,
+  },
+  stressChipText: {
+    fontFamily: Typography.fontFamily.semibold,
+    color: Colors.textSecondary,
+  },
+  stressChipTextActive: {
+    color: Colors.greenAccent,
   },
   techniqueBox: {
     width: '100%',

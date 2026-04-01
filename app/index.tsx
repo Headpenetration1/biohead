@@ -30,7 +30,7 @@ import StreakBadge from '@/components/StreakBadge';
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { state, toggleFavorite, setWidgetSnapshot } = useAppContext();
+  const { state, toggleFavorite, setWidgetSnapshot, setStressCheck, deleteSessionSetup } = useAppContext();
   const { light: hapticLight } = useHaptics(state.hapticsEnabled);
 
   const orb1TranslateY = useSharedValue(0);
@@ -95,6 +95,7 @@ export default function HomeScreen() {
       sessions: state.sessions,
       exercises,
       goal: state.userGoal,
+      stressLevel: state.stressCheck?.level,
     });
     if (!rec) return null;
     const exercise = exercises.find((entry) => entry.id === rec.exerciseId);
@@ -117,6 +118,20 @@ export default function HomeScreen() {
     if (!activeProgram || !state.activeProgram) return undefined;
     return activeProgram.days[state.activeProgram.currentDay - 1];
   }, [activeProgram, state.activeProgram]);
+  const savedSessions = useMemo(
+    () =>
+      state.savedSessions
+        .map((setup) => {
+          const exercise = exercises.find((entry) => entry.id === setup.exerciseId);
+          if (!exercise) return null;
+          return { ...setup, exercise };
+        })
+        .filter(
+          (entry): entry is (typeof state.savedSessions)[number] & { exercise: (typeof exercises)[number] } =>
+            entry != null
+        ),
+    [state.savedSessions]
+  );
 
   useEffect(() => {
     setWidgetSnapshot({
@@ -225,6 +240,29 @@ export default function HomeScreen() {
           </Animated.View>
         ) : null}
 
+        <Animated.View entering={FadeInDown.delay(170).duration(500).springify()} style={styles.stressWrap}>
+          <View style={styles.stressCard}>
+            <Text style={styles.stressTitle}>Stress-sjekk før økt</Text>
+            <Text style={styles.stressSub}>Hvordan føles kroppen akkurat nå?</Text>
+            <View style={styles.stressLevels}>
+              {[1, 2, 3, 4, 5].map((level) => {
+                const active = state.stressCheck?.level === level;
+                return (
+                  <Pressable
+                    key={level}
+                    onPress={() => setStressCheck(level)}
+                    style={[styles.stressChip, active && styles.stressChipActive]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Stressnivå ${level} av 5`}
+                  >
+                    <Text style={[styles.stressChipText, active && styles.stressChipTextActive]}>{level}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        </Animated.View>
+
         {lastSessionExercise ? (
           <Animated.View entering={FadeInDown.delay(180).duration(500).springify()} style={styles.resumeWrap}>
             <Pressable
@@ -249,6 +287,47 @@ export default function HomeScreen() {
               </Text>
               <Text style={styles.resumeSub}>Åpne øvelsen · varighet som du har valgt</Text>
             </Pressable>
+          </Animated.View>
+        ) : null}
+
+        {savedSessions.length > 0 ? (
+          <Animated.View entering={FadeInDown.delay(190).duration(500).springify()} style={styles.savedWrap}>
+            <Text style={styles.sectionHeading}>Lagrede økter</Text>
+            <View style={styles.savedList}>
+              {savedSessions.map((setup) => (
+                <View key={setup.id} style={styles.savedCard}>
+                  <Pressable
+                    onPress={() =>
+                      router.push({
+                        pathname: '/exercise/session',
+                        params: {
+                          id: setup.exercise.id,
+                          duration: String(setup.duration),
+                          stress: setup.stressLevel != null ? String(setup.stressLevel) : undefined,
+                        },
+                      })
+                    }
+                    style={styles.savedMain}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Start lagret økt ${setup.name}`}
+                  >
+                    <Text style={styles.savedName}>{setup.name}</Text>
+                    <Text style={styles.savedSub}>
+                      {setup.exercise.title} · {setup.duration}s
+                      {setup.stressLevel != null ? ` · stress ${setup.stressLevel}/5` : ''}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => deleteSessionSetup(setup.id)}
+                    style={styles.savedDelete}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Slett lagret økt ${setup.name}`}
+                  >
+                    <Text style={styles.savedDeleteText}>Slett</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
           </Animated.View>
         ) : null}
 
@@ -485,6 +564,98 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.regular,
     fontSize: Typography.sizes.sm,
     color: Colors.textSecondary,
+  },
+  stressWrap: {
+    alignSelf: 'stretch',
+    marginBottom: 12,
+  },
+  stressCard: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    backgroundColor: 'rgba(14,32,37,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(14,32,37,0.08)',
+    gap: 8,
+  },
+  stressTitle: {
+    fontFamily: Typography.fontFamily.bold,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textPrimary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  stressSub: {
+    fontFamily: Typography.fontFamily.regular,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textSecondary,
+  },
+  stressLevels: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  stressChip: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: 'rgba(14,32,37,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stressChipActive: {
+    borderColor: `${Colors.greenAccent}88`,
+    backgroundColor: `${Colors.greenAccent}20`,
+  },
+  stressChipText: {
+    fontFamily: Typography.fontFamily.semibold,
+    color: Colors.textSecondary,
+  },
+  stressChipTextActive: {
+    color: Colors.greenAccent,
+  },
+  savedWrap: {
+    alignSelf: 'stretch',
+    marginBottom: 12,
+  },
+  savedList: {
+    gap: 8,
+  },
+  savedCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(14,32,37,0.08)',
+    backgroundColor: 'rgba(14,32,37,0.04)',
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  savedMain: {
+    flex: 1,
+  },
+  savedName: {
+    fontFamily: Typography.fontFamily.semibold,
+    color: Colors.textPrimary,
+  },
+  savedSub: {
+    marginTop: 2,
+    fontFamily: Typography.fontFamily.regular,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textSecondary,
+  },
+  savedDelete: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: 'rgba(14,32,37,0.08)',
+  },
+  savedDeleteText: {
+    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.sizes.xs,
+    color: Colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   resumeWrap: {
     alignSelf: 'stretch',
