@@ -20,12 +20,10 @@ import { useAppContext } from '@/context/AppContext';
 import type { ReminderTime, SoundMode } from '@/utils/storage';
 import {
   type AmbientSoundscape,
-  type AmbientMix,
   AMBIENT_SOUND_MODULES,
   AMBIENT_SOUND_VOLUMES,
   AMBIENT_SOUNDSCAPE_IDS,
   AMBIENT_SOUNDSCAPE_OPTIONS,
-  DEFAULT_AMBIENT_MIX,
 } from '@/constants/ambientSounds';
 import { requestNotificationPermission } from '@/utils/reminders';
 import { requestHealthKitMindfulAccess } from '@/utils/appleHealthMindful';
@@ -79,18 +77,10 @@ export default function SettingsScreen() {
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [previewBusy, setPreviewBusy] = useState(false);
   const previewRefs = useRef<Partial<Record<AmbientSoundscape, Audio.Sound>>>({});
-  const mixBeforeSoloRef = useRef<AmbientMix>({ ...state.ambientMix });
 
-  const isSoloMix = useCallback((mix: AmbientMix, target: AmbientSoundscape): boolean => {
+  const isSoloMix = useCallback((mix: Record<AmbientSoundscape, number>, target: AmbientSoundscape): boolean => {
     return AMBIENT_SOUNDSCAPE_IDS.every((id) =>
       id === target ? (mix[id] ?? 0) > 0.99 : (mix[id] ?? 0) <= 0.01
-    );
-  }, []);
-
-  const dominantSoundscape = useCallback((mix: AmbientMix): AmbientSoundscape => {
-    return AMBIENT_SOUNDSCAPE_IDS.reduce<AmbientSoundscape>(
-      (best, id) => ((mix[id] ?? 0) > (mix[best] ?? 0) ? id : best),
-      'wind'
     );
   }, []);
 
@@ -165,14 +155,6 @@ export default function SettingsScreen() {
     };
   }, [stopPreview]);
 
-  useEffect(() => {
-    const hasAny = AMBIENT_SOUNDSCAPE_IDS.some((id) => (state.ambientMix[id] ?? 0) > 0.01);
-    const isAnySolo = AMBIENT_SOUNDSCAPE_IDS.some((id) => isSoloMix(state.ambientMix, id));
-    if (hasAny && !isAnySolo) {
-      mixBeforeSoloRef.current = { ...state.ambientMix };
-    }
-  }, [state.ambientMix, isSoloMix]);
-
   const setAmbientLevel = useCallback(
     (id: AmbientSoundscape, nextLevel: number) => {
       const clamped = Math.max(0, Math.min(1, nextLevel));
@@ -189,16 +171,10 @@ export default function SettingsScreen() {
   const setAmbientSolo = useCallback(
     (id: AmbientSoundscape) => {
       if (isSoloMix(state.ambientMix, id)) {
-        const fallback = mixBeforeSoloRef.current;
-        const restoreHasAny = AMBIENT_SOUNDSCAPE_IDS.some((soundId) => (fallback[soundId] ?? 0) > 0.01);
-        const restoredMix = restoreHasAny ? fallback : { ...DEFAULT_AMBIENT_MIX };
-        updatePreferences({
-          ambientMix: restoredMix,
-          ambientSoundscape: dominantSoundscape(restoredMix),
-        });
+        // Remove quick-select highlight without restoring previous mix.
+        updatePreferences({ ambientSoundscape: 'neutral' });
         return;
       }
-      mixBeforeSoloRef.current = { ...state.ambientMix };
       const solo = AMBIENT_SOUNDSCAPE_IDS.reduce<Record<AmbientSoundscape, number>>(
         (acc, soundId) => ({
           ...acc,
@@ -208,7 +184,7 @@ export default function SettingsScreen() {
       );
       updatePreferences({ ambientMix: solo, ambientSoundscape: id });
     },
-    [dominantSoundscape, isSoloMix, state.ambientMix, updatePreferences]
+    [isSoloMix, state.ambientMix, updatePreferences]
   );
 
   const saveCurrentMix = useCallback(() => {
@@ -390,7 +366,7 @@ export default function SettingsScreen() {
             <Text style={styles.presetLabel}>Hurtigvalg (solo)</Text>
             <View style={styles.soundscapeList}>
               {AMBIENT_SOUNDSCAPE_OPTIONS.map((opt) => {
-                const active = isSoloMix(state.ambientMix, opt.id);
+                const active = state.ambientSoundscape === opt.id && isSoloMix(state.ambientMix, opt.id);
                 return (
                   <Pressable
                     key={opt.id}
@@ -457,13 +433,16 @@ export default function SettingsScreen() {
               ) : (
                 state.ambientMixPresets.map((preset) => (
                   <View key={preset.id} style={styles.presetMixRow}>
+                    <View style={styles.presetMixApply}>
+                      <Text style={styles.presetMixName}>{preset.name}</Text>
+                    </View>
                     <Pressable
                       onPress={() => applyAmbientPreset(preset.id)}
-                      style={styles.presetMixApply}
+                      style={styles.presetMixUse}
                       accessibilityRole="button"
                       accessibilityLabel={`Bruk miks ${preset.name}`}
                     >
-                      <Text style={styles.presetMixName}>{preset.name}</Text>
+                      <Text style={styles.presetMixUseText}>Bruk</Text>
                     </Pressable>
                     <Pressable
                       onPress={() => deleteAmbientPreset(preset.id)}
@@ -942,6 +921,19 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.semibold,
     fontSize: Typography.sizes.sm,
     color: Colors.textPrimary,
+  },
+  presetMixUse: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: `${Colors.greenAccent}66`,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: `${Colors.greenAccent}1A`,
+  },
+  presetMixUseText: {
+    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.sizes.sm,
+    color: Colors.greenAccent,
   },
   presetMixDelete: {
     borderRadius: 10,
