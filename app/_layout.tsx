@@ -14,6 +14,7 @@ import {
 import { AppProvider } from '@/context/AppContext';
 import { Colors } from '@/constants/colors';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { initReminderActions } from '@/utils/reminders';
 
 initSentry();
 
@@ -32,6 +33,10 @@ function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded]);
+
+  useEffect(() => {
+    initReminderActions();
+  }, []);
 
   if (!fontsLoaded) return null;
 

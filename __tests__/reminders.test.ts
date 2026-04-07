@@ -1,6 +1,15 @@
 import { getAdaptiveReminderTimes } from '@/utils/reminders';
 import type { SessionRecord } from '@/utils/storage';
 
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  __esModule: true,
+  default: {
+    getItem: jest.fn(async () => null),
+    setItem: jest.fn(async () => undefined),
+    removeItem: jest.fn(async () => undefined),
+  },
+}));
+
 describe('adaptive reminder times', () => {
   it('keeps fallback for low data volume', () => {
     const sessions: SessionRecord[] = [

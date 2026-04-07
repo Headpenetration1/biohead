@@ -1,18 +1,41 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ReminderTime, SessionRecord } from '@/utils/storage';
 import { getToday } from '@/utils/formatTime';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
-
 const ANDROID_CHANNEL_ID = 'biohead-daily';
+const REMINDER_CATEGORY_ID = 'biohead-reminder-actions';
+const ACTION_SNOOZE_30 = 'snooze-30-min';
+const ACTION_SKIP_TODAY = 'skip-today';
+const SKIP_TODAY_KEY = '@biohead_reminder_skip_today';
+
+let reminderActionsInitialized = false;
+
+function getLocalDateKey(date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+async function shouldSkipToday(): Promise<boolean> {
+  const skippedDate = await AsyncStorage.getItem(SKIP_TODAY_KEY);
+  return skippedDate === getLocalDateKey();
+}
+
+Notifications.setNotificationHandler({
+  handleNotification: async (notification) => {
+    const kind = notification.request.content.data?.reminderKind;
+    const hideDailyReminder = kind === 'daily' && (await shouldSkipToday());
+    return {
+      shouldShowBanner: !hideDailyReminder,
+      shouldShowList: !hideDailyReminder,
+      shouldPlaySound: !hideDailyReminder,
+      shouldSetBadge: false,
+    };
+  },
+});
 
 async function ensureAndroidChannel(): Promise<void> {
   if (Platform.OS !== 'android') return;
@@ -21,6 +44,54 @@ async function ensureAndroidChannel(): Promise<void> {
     importance: Notifications.AndroidImportance.DEFAULT,
     vibrationPattern: [0, 250, 250, 250],
     lightColor: '#46917c',
+  });
+}
+
+async function ensureReminderCategory(): Promise<void> {
+  await Notifications.setNotificationCategoryAsync(REMINDER_CATEGORY_ID, [
+    {
+      identifier: ACTION_SNOOZE_30,
+      buttonTitle: 'Snooze 30 min',
+    },
+    {
+      identifier: ACTION_SKIP_TODAY,
+      buttonTitle: 'Hopp over i dag',
+    },
+  ]);
+}
+
+async function scheduleSnoozeReminder(minutes: number): Promise<void> {
+  const triggerAt = new Date(Date.now() + minutes * 60 * 1000);
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: 'Biohead',
+      body: 'Tid for en rolig pustepause.',
+      sound: 'default',
+      data: { reminderKind: 'snooze' },
+      categoryIdentifier: REMINDER_CATEGORY_ID,
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: triggerAt,
+      ...(Platform.OS === 'android' ? { channelId: ANDROID_CHANNEL_ID } : {}),
+    },
+  });
+}
+
+export function initReminderActions(): void {
+  if (reminderActionsInitialized) return;
+  reminderActionsInitialized = true;
+  void ensureReminderCategory();
+  Notifications.addNotificationResponseReceivedListener(async (response) => {
+    const actionId = response.actionIdentifier;
+    if (actionId === ACTION_SNOOZE_30) {
+      await ensureAndroidChannel();
+      await scheduleSnoozeReminder(30);
+      return;
+    }
+    if (actionId === ACTION_SKIP_TODAY) {
+      await AsyncStorage.setItem(SKIP_TODAY_KEY, getLocalDateKey());
+    }
   });
 }
 
@@ -81,12 +152,14 @@ export async function syncDailyReminder(
 ): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
   if (!enabled) return;
+  if (await shouldSkipToday()) return;
   if (options?.skipIfDoneToday && options.lastSessionDate === getToday()) return;
 
   const granted = await requestNotificationPermission();
   if (!granted) return;
 
   await ensureAndroidChannel();
+  await ensureReminderCategory();
   const times =
     options?.adaptiveEnabled && options.sessions
       ? getAdaptiveReminderTimes(options.sessions, reminderTimes)
@@ -101,6 +174,8 @@ export async function syncDailyReminder(
             title: 'Biohead',
             body: 'Ta en kort pustepause – du fortjener det.',
             sound: 'default',
+            data: { reminderKind: 'daily' },
+            categoryIdentifier: REMINDER_CATEGORY_ID,
           },
           trigger: {
             type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
@@ -119,6 +194,8 @@ export async function syncDailyReminder(
         title: 'Biohead',
         body: 'Ta en kort pustepause – du fortjener det.',
         sound: 'default',
+        data: { reminderKind: 'daily' },
+        categoryIdentifier: REMINDER_CATEGORY_ID,
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DAILY,
