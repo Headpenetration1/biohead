@@ -122,6 +122,10 @@ export default function HomeScreen() {
     if (!activeProgram || !state.activeProgram) return undefined;
     return activeProgram.days[state.activeProgram.currentDay - 1];
   }, [activeProgram, state.activeProgram]);
+  const isKickstartProgram = useMemo(() => {
+    const id = state.activeProgram?.id;
+    return id === 'calm3' || id === 'focus3' || id === 'sleep3';
+  }, [state.activeProgram?.id]);
   const savedSessions = useMemo(
     () =>
       state.savedSessions
@@ -216,6 +220,45 @@ export default function HomeScreen() {
             <Text style={styles.greeting}>Hva trenger du nå?</Text>
           )}
         </Animated.View>
+
+        {activeProgram && state.activeProgram && activeProgramDay ? (
+          <Animated.View entering={FadeInDown.delay(155).duration(500).springify()} style={styles.todayPlanWrap}>
+            <View style={styles.todayPlanCard}>
+              <View style={styles.todayPlanHeader}>
+                <Text style={styles.todayPlanKicker}>{isKickstartProgram ? 'Today plan' : 'Dagens plan'}</Text>
+                <Text style={styles.todayPlanBadge}>
+                  Dag {state.activeProgram.currentDay}/{activeProgram.days.length}
+                  {isKickstartProgram ? ' kickstart' : ''}
+                </Text>
+              </View>
+              <Text style={styles.todayPlanTitle}>{activeProgramDay.label}</Text>
+              <Text style={styles.todayPlanSub}>
+                {exercises.find((entry) => entry.id === activeProgramDay.exerciseId)?.title ?? activeProgramDay.exerciseId}
+                {' · '}
+                {activeProgramDay.duration}s
+              </Text>
+              <View style={styles.todayPlanActions}>
+                <Pressable
+                  onPress={() =>
+                    router.push({
+                      pathname: '/exercise/[id]',
+                      params: { id: activeProgramDay.exerciseId },
+                    })
+                  }
+                  style={styles.todayPlanPrimaryBtn}
+                >
+                  <Text style={styles.todayPlanPrimaryBtnText}>Start dagens øvelse</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => router.push('/programs' as Href)}
+                  style={styles.todayPlanSecondaryBtn}
+                >
+                  <Text style={styles.todayPlanSecondaryBtnText}>Bytt program</Text>
+                </Pressable>
+              </View>
+            </View>
+          </Animated.View>
+        ) : null}
 
         <Animated.View entering={FadeInDown.delay(160).duration(500).springify()} style={styles.soundQuickWrap}>
           <Pressable
@@ -376,7 +419,7 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
-        {activeProgram && state.activeProgram && activeProgramDay ? (
+        {activeProgram && state.activeProgram && activeProgramDay && !isKickstartProgram ? (
           <Animated.View entering={FadeInDown.delay(230).duration(500).springify()} style={styles.programWrap}>
             <View style={styles.programCard}>
               <View style={styles.programHeader}>
@@ -890,6 +933,82 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.xl,
     color: Colors.textSecondary,
     letterSpacing: 0.5,
+  },
+  todayPlanWrap: {
+    alignSelf: 'stretch',
+    marginBottom: 12,
+  },
+  todayPlanCard: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    backgroundColor: `${Colors.greenAccent}12`,
+    borderWidth: 1,
+    borderColor: `${Colors.greenAccent}50`,
+    gap: 8,
+  },
+  todayPlanHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  todayPlanKicker: {
+    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.sizes.xs,
+    color: Colors.textMuted,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
+  todayPlanBadge: {
+    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.sizes.xs,
+    color: Colors.greenAccent,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  todayPlanTitle: {
+    fontFamily: Typography.fontFamily.bold,
+    fontSize: Typography.sizes.base,
+    color: Colors.textPrimary,
+  },
+  todayPlanSub: {
+    fontFamily: Typography.fontFamily.regular,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textSecondary,
+  },
+  todayPlanActions: {
+    marginTop: 4,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  todayPlanPrimaryBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: `${Colors.greenAccent}66`,
+    backgroundColor: `${Colors.greenAccent}22`,
+    alignItems: 'center',
+  },
+  todayPlanPrimaryBtnText: {
+    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.sizes.sm,
+    color: Colors.greenAccent,
+  },
+  todayPlanSecondaryBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(14,32,37,0.1)',
+    backgroundColor: 'rgba(14,32,37,0.05)',
+    alignItems: 'center',
+  },
+  todayPlanSecondaryBtnText: {
+    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textSecondary,
   },
   sectionHeading: {
     fontFamily: Typography.fontFamily.bold,
