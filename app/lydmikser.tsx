@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, TextInput } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, TextInput, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -30,7 +30,7 @@ const SOUND_OPTIONS: { mode: SoundMode; label: string; sub: string }[] = [
 
 let audioModeReady = false;
 const TONE_SAMPLE_RATE = 44100;
-const TONE_DURATION_TARGET_SECONDS = 1.2;
+const TONE_DURATION_TARGET_SECONDS = 30;
 const TONE_PRESETS = [100, 157, 432, 528, 741];
 
 async function ensureAudioMode(): Promise<void> {
@@ -50,26 +50,10 @@ function writeAscii(view: DataView, offset: number, value: string): void {
   }
 }
 
-function bytesToBase64(bytes: Uint8Array): string {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-  let out = '';
-  for (let i = 0; i < bytes.length; i += 3) {
-    const a = bytes[i] ?? 0;
-    const b = bytes[i + 1] ?? 0;
-    const c = bytes[i + 2] ?? 0;
-    const triplet = (a << 16) | (b << 8) | c;
-    out += alphabet[(triplet >> 18) & 63];
-    out += alphabet[(triplet >> 12) & 63];
-    out += i + 1 < bytes.length ? alphabet[(triplet >> 6) & 63] : '=';
-    out += i + 2 < bytes.length ? alphabet[triplet & 63] : '=';
-  }
-  return out;
-}
-
-function buildSineWavBase64(frequencyHz: number): string {
+function buildSineWavBytes(frequencyHz: number): Uint8Array {
   const freq = Math.max(40, Math.min(1000, Math.round(frequencyHz)));
   const cycles = Math.max(1, Math.round(freq * TONE_DURATION_TARGET_SECONDS));
-  const sampleCount = Math.max(1, Math.round((TONE_SAMPLE_RATE * cycles) / freq));
+  const sampleCount = Math.max(2, Math.round((TONE_SAMPLE_RATE * cycles) / freq));
   const dataSize = sampleCount * 2;
   const buffer = new ArrayBuffer(44 + dataSize);
   const view = new DataView(buffer);
@@ -89,30 +73,32 @@ function buildSineWavBase64(frequencyHz: number): string {
   view.setUint32(40, dataSize, true);
 
   let offset = 44;
+  const phaseCycles = 2 * Math.PI * cycles;
   for (let i = 0; i < sampleCount; i += 1) {
-    const sample = Math.sin((2 * Math.PI * freq * i) / TONE_SAMPLE_RATE);
+    const t = i / (sampleCount - 1);
+    const sample = Math.sin(phaseCycles * t);
     const clamped = Math.max(-1, Math.min(1, sample));
     view.setInt16(offset, Math.round(clamped * 32767), true);
     offset += 2;
   }
 
-  return bytesToBase64(new Uint8Array(buffer));
+  return new Uint8Array(buffer);
 }
 
 async function ensureToneFile(frequencyHz: number): Promise<string> {
   const normalized = Math.max(40, Math.min(1000, Math.round(frequencyHz)));
   const file = new File(Paths.cache, `tone-${normalized}.wav`);
-  if (!file.exists) {
-    const base64 = buildSineWavBase64(normalized);
-    file.create({ overwrite: true });
-    file.write(base64, { encoding: 'base64' });
-  }
+  const bytes = buildSineWavBytes(normalized);
+  file.create({ overwrite: true });
+  file.write(bytes);
   return file.uri;
 }
 
 export default function SoundMixerScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const isCompactToneLayout = width <= 390;
   const { state, updatePreferences, saveAmbientPreset, applyAmbientPreset, deleteAmbientPreset } =
     useAppContext();
   const [isPreviewing, setIsPreviewing] = useState(false);
@@ -124,6 +110,7 @@ export default function SoundMixerScreen() {
   const [toneBusy, setToneBusy] = useState(false);
   const previewRefs = useRef<Partial<Record<AmbientSoundscape, Audio.Sound>>>({});
   const toneRef = useRef<Audio.Sound | null>(null);
+  const toneRestartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isSoloMix = useCallback((mix: Record<AmbientSoundscape, number>, target: AmbientSoundscape): boolean => {
     return AMBIENT_SOUNDSCAPE_IDS.every((id) =>
@@ -147,6 +134,10 @@ export default function SoundMixerScreen() {
   }, []);
 
   const stopTonePreview = useCallback(async () => {
+    if (toneRestartTimerRef.current) {
+      clearTimeout(toneRestartTimerRef.current);
+      toneRestartTimerRef.current = null;
+    }
     if (!toneRef.current) return;
     const sound = toneRef.current;
     toneRef.current = null;
@@ -180,6 +171,21 @@ export default function SoundMixerScreen() {
       setToneBusy(false);
     }
   }, [stopPreview, stopTonePreview, toneFrequency, toneVolume]);
+
+  const setToneFrequencyAndRefresh = useCallback(
+    (next: number) => {
+      const normalized = Math.max(40, Math.min(1000, Math.round(next)));
+      setToneFrequency(normalized);
+      if (!isTonePreviewing) return;
+      if (toneRestartTimerRef.current) {
+        clearTimeout(toneRestartTimerRef.current);
+      }
+      toneRestartTimerRef.current = setTimeout(() => {
+        void startTonePreview();
+      }, 180);
+    },
+    [isTonePreviewing, startTonePreview]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -221,6 +227,9 @@ export default function SoundMixerScreen() {
 
   useEffect(() => {
     return () => {
+      if (toneRestartTimerRef.current) {
+        clearTimeout(toneRestartTimerRef.current);
+      }
       void stopPreview();
       void stopTonePreview();
     };
@@ -230,14 +239,6 @@ export default function SoundMixerScreen() {
     if (!isTonePreviewing || !toneRef.current) return;
     void toneRef.current.setVolumeAsync(toneVolume).catch(() => {});
   }, [isTonePreviewing, toneVolume]);
-
-  useEffect(() => {
-    if (!isTonePreviewing) return;
-    const handle = setTimeout(() => {
-      void startTonePreview();
-    }, 160);
-    return () => clearTimeout(handle);
-  }, [isTonePreviewing, toneFrequency, startTonePreview]);
 
   const setAmbientLevel = useCallback(
     (id: AmbientSoundscape, nextLevel: number) => {
@@ -266,6 +267,9 @@ export default function SoundMixerScreen() {
     },
     [isSoloMix, state.ambientMix, updatePreferences]
   );
+
+  const disableAmbientPreviewToggle = previewBusy || (!isPreviewing && (isTonePreviewing || toneBusy));
+  const disableTonePreviewToggle = toneBusy || (!isTonePreviewing && (isPreviewing || previewBusy));
 
   return (
     <ScrollView
@@ -311,12 +315,12 @@ export default function SoundMixerScreen() {
             </View>
             <Pressable
               onPress={() => setIsPreviewing((prev) => !prev)}
-              disabled={previewBusy}
+              disabled={disableAmbientPreviewToggle}
               style={({ pressed }) => [
                 styles.previewBtn,
                 isPreviewing && styles.previewBtnActive,
                 pressed && styles.previewBtnPressed,
-                previewBusy && styles.previewBtnDisabled,
+                disableAmbientPreviewToggle && styles.previewBtnDisabled,
               ]}
             >
               <Text style={[styles.previewBtnText, isPreviewing && styles.previewBtnTextActive]}>
@@ -410,93 +414,105 @@ export default function SoundMixerScreen() {
         </View>
       ) : null}
 
-      <View style={styles.card}>
-        <Text style={styles.presetLabel}>Tone generator (beta)</Text>
-        <View style={styles.toneSection}>
-          <View style={styles.toneHeaderRow}>
-            <Text style={styles.toneValue}>{Math.round(toneFrequency)} Hz</Text>
-            <Pressable
-              onPress={() => {
-                if (isTonePreviewing) {
-                  void stopTonePreview();
-                } else {
-                  void startTonePreview();
-                }
-              }}
-              disabled={toneBusy}
-              style={({ pressed }) => [
-                styles.previewBtn,
-                isTonePreviewing && styles.previewBtnActive,
-                pressed && styles.previewBtnPressed,
-                toneBusy && styles.previewBtnDisabled,
-              ]}
-            >
-              <Text style={[styles.previewBtnText, isTonePreviewing && styles.previewBtnTextActive]}>
-                {toneBusy ? 'Laster…' : isTonePreviewing ? 'Stopp' : 'Spill av'}
-              </Text>
-            </Pressable>
-          </View>
+      {state.soundMode === 'cues' ? (
+        <View style={styles.card}>
+          <Text style={styles.presetLabel}>Tone generator (beta)</Text>
+          <View style={styles.toneSection}>
+            <View style={styles.toneHeaderRow}>
+              <Text style={styles.toneValue}>{Math.round(toneFrequency)} Hz</Text>
+              <Pressable
+                onPress={() => {
+                  if (isTonePreviewing) {
+                    void stopTonePreview();
+                  } else {
+                    void startTonePreview();
+                  }
+                }}
+                disabled={disableTonePreviewToggle}
+                style={({ pressed }) => [
+                  styles.previewBtn,
+                  isTonePreviewing && styles.previewBtnActive,
+                  pressed && styles.previewBtnPressed,
+                  disableTonePreviewToggle && styles.previewBtnDisabled,
+                ]}
+              >
+                <Text style={[styles.previewBtnText, isTonePreviewing && styles.previewBtnTextActive]}>
+                  {toneBusy ? 'Laster…' : isTonePreviewing ? 'Stopp' : 'Spill av'}
+                </Text>
+              </Pressable>
+            </View>
 
-          <Text style={styles.toneLabel}>Frekvens</Text>
-          <Slider
-            value={toneFrequency}
-            minimumValue={40}
-            maximumValue={1000}
-            step={1}
-            minimumTrackTintColor={Colors.greenAccent}
-            maximumTrackTintColor="rgba(14,32,37,0.12)"
-            thumbTintColor={Colors.greenAccent}
-            onValueChange={(value) => setToneFrequency(Math.round(value))}
-          />
-          <View style={styles.toneNudgeRow}>
-            <Pressable
-              onPress={() => setToneFrequency((prev) => Math.max(40, prev - 10))}
-              style={styles.mixBtn}
-            >
-              <Text style={styles.mixBtnText}>−10</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => setToneFrequency((prev) => Math.min(1000, prev + 10))}
-              style={styles.mixBtn}
-            >
-              <Text style={styles.mixBtnText}>+10</Text>
-            </Pressable>
-          </View>
+            <Text style={styles.toneLabel}>Frekvens</Text>
+            <Slider
+              value={toneFrequency}
+              minimumValue={40}
+              maximumValue={1000}
+              step={1}
+              minimumTrackTintColor={Colors.greenAccent}
+              maximumTrackTintColor="rgba(14,32,37,0.12)"
+              thumbTintColor={Colors.greenAccent}
+              onValueChange={(value) => setToneFrequencyAndRefresh(value)}
+            />
+            <View style={[styles.toneNudgeRow, isCompactToneLayout && styles.toneNudgeRowCompact]}>
+              <Pressable
+                onPress={() => setToneFrequencyAndRefresh(toneFrequency - 10)}
+                style={styles.mixBtn}
+              >
+                <Text style={styles.mixBtnText}>−10</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setToneFrequencyAndRefresh(toneFrequency + 10)}
+                style={styles.mixBtn}
+              >
+                <Text style={styles.mixBtnText}>+10</Text>
+              </Pressable>
+            </View>
 
-          <Text style={styles.toneLabel}>Volum ({Math.round(toneVolume * 100)}%)</Text>
-          <Slider
-            value={toneVolume}
-            minimumValue={0}
-            maximumValue={1}
-            step={0.01}
-            minimumTrackTintColor={Colors.greenAccent}
-            maximumTrackTintColor="rgba(14,32,37,0.12)"
-            thumbTintColor={Colors.greenAccent}
-            onValueChange={(value) => setToneVolume(value)}
-          />
+            <Text style={styles.toneLabel}>Volum ({Math.round(toneVolume * 100)}%)</Text>
+            <Slider
+              value={toneVolume}
+              minimumValue={0}
+              maximumValue={1}
+              step={0.01}
+              minimumTrackTintColor={Colors.greenAccent}
+              maximumTrackTintColor="rgba(14,32,37,0.12)"
+              thumbTintColor={Colors.greenAccent}
+              onValueChange={(value) => setToneVolume(value)}
+            />
 
-          <Text style={styles.toneLabel}>Presets</Text>
-          <View style={styles.tonePresetRow}>
-            {TONE_PRESETS.map((preset) => {
-              const active = Math.round(toneFrequency) === preset;
-              return (
-                <Pressable
-                  key={`preset-${preset}`}
-                  onPress={() => setToneFrequency(preset)}
-                  style={[styles.tonePresetChip, active && styles.tonePresetChipActive]}
-                >
-                  <Text style={[styles.tonePresetText, active && styles.tonePresetTextActive]}>
-                    {preset} Hz
-                  </Text>
-                </Pressable>
-              );
-            })}
+            <Text style={styles.toneLabel}>Presets</Text>
+            <View style={[styles.tonePresetRow, isCompactToneLayout && styles.tonePresetRowCompact]}>
+              {TONE_PRESETS.map((preset) => {
+                const active = Math.round(toneFrequency) === preset;
+                return (
+                  <Pressable
+                    key={`preset-${preset}`}
+                    onPress={() => setToneFrequencyAndRefresh(preset)}
+                    style={[
+                      styles.tonePresetChip,
+                      isCompactToneLayout && styles.tonePresetChipCompact,
+                      active && styles.tonePresetChipActive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.tonePresetText,
+                        isCompactToneLayout && styles.tonePresetTextCompact,
+                        active && styles.tonePresetTextActive,
+                      ]}
+                    >
+                      {preset} Hz
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Text style={styles.toneHint}>
+              Start med lavt volum. Tonegenerator er for egen utforsking og ikke medisinsk behandling.
+            </Text>
           </View>
-          <Text style={styles.toneHint}>
-            Start med lavt volum. Tonegenerator er for egen utforsking og ikke medisinsk behandling.
-          </Text>
         </View>
-      </View>
+      ) : null}
     </ScrollView>
   );
 }
@@ -782,10 +798,16 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: -4,
   },
+  toneNudgeRowCompact: {
+    gap: 6,
+  },
   tonePresetRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  tonePresetRowCompact: {
+    gap: 6,
   },
   tonePresetChip: {
     borderRadius: 10,
@@ -795,6 +817,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 10,
   },
+  tonePresetChipCompact: {
+    paddingVertical: 7,
+    paddingHorizontal: 9,
+  },
   tonePresetChipActive: {
     borderColor: `${Colors.greenAccent}88`,
     backgroundColor: `${Colors.greenAccent}22`,
@@ -803,6 +829,9 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.semibold,
     fontSize: Typography.sizes.sm,
     color: Colors.textSecondary,
+  },
+  tonePresetTextCompact: {
+    fontSize: Typography.sizes.xs,
   },
   tonePresetTextActive: {
     color: Colors.greenAccent,
