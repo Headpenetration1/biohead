@@ -334,6 +334,11 @@ export default function SettingsScreen() {
           <Text style={styles.linkArrow}>›</Text>
         </Pressable>
         <View style={styles.divider} />
+        <Pressable onPress={() => Linking.openURL('https://biohead.no')} style={styles.linkRow}>
+          <Text style={styles.linkText}>Besøk oss på biohead.no</Text>
+          <Text style={styles.linkArrow}>›</Text>
+        </Pressable>
+        <View style={styles.divider} />
         <Text style={styles.legal}>
           Biohead lagrer streak og økter kun lokalt på enheten (AsyncStorage). Ingen konto kreves.
           {'\n\n'}
