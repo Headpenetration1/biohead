@@ -32,9 +32,9 @@ export default function OnboardingScreen() {
   })();
   const finalGoal = selectedGoal ?? computedGoal;
   const starterProgramId: ProgramId = (() => {
-    if (sleepQuality <= 2) return 'sleep7';
-    if (finalGoal === 'focus') return 'focus7';
-    return 'calm7';
+    if (sleepQuality <= 2) return 'sleep3';
+    if (finalGoal === 'focus') return 'focus3';
+    return 'calm3';
   })();
 
   const finish = () => {
@@ -152,6 +152,8 @@ export default function OnboardingScreen() {
           <Text style={styles.body}>
             Startforslag: <Text style={styles.recoInline}>{finalGoal}</Text> + program{' '}
             <Text style={styles.recoInline}>{starterProgramId}</Text>.
+            {'\n\n'}
+            Du starter med en 3-dagers kickstart for å etablere vane raskt.
             {'\n\n'}
             Finn et rolig øyeblikk, velg en øvelse, og følg sirkelen. Alt lagres lokalt på enheten.
           </Text>

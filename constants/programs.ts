@@ -1,6 +1,15 @@
 import type { ExerciseId } from '@/constants/exercises';
 
-export type ProgramId = 'calm7' | 'focus7' | 'sleep7' | 'resilience14' | 'deepFocus10' | 'recovery14';
+export type ProgramId =
+  | 'calm3'
+  | 'focus3'
+  | 'sleep3'
+  | 'calm7'
+  | 'focus7'
+  | 'sleep7'
+  | 'resilience14'
+  | 'deepFocus10'
+  | 'recovery14';
 
 export interface ProgramDay {
   day: number;
@@ -18,6 +27,39 @@ export interface ProgramDefinition {
 }
 
 export const PROGRAMS: ProgramDefinition[] = [
+  {
+    id: 'calm3',
+    title: '3 dager kickstart ro',
+    subtitle: 'En enkel start på pusterutinen',
+    description: 'Lav terskel for å bygge vane de første tre dagene etter onboarding.',
+    days: [
+      { day: 1, exerciseId: 'calm', duration: 60, label: 'Myk landing' },
+      { day: 2, exerciseId: 'balance', duration: 60, label: 'Stabil rytme' },
+      { day: 3, exerciseId: 'destress', duration: 60, label: 'Stressned reset' },
+    ],
+  },
+  {
+    id: 'focus3',
+    title: '3 dager kickstart fokus',
+    subtitle: 'Kort progresjon for mental klarhet',
+    description: 'Tre korte økter for å komme raskt i gang med fokusvanen.',
+    days: [
+      { day: 1, exerciseId: 'focus', duration: 60, label: 'Box start' },
+      { day: 2, exerciseId: 'energy', duration: 60, label: 'Aktivering' },
+      { day: 3, exerciseId: 'focus', duration: 90, label: 'Dypere fokus' },
+    ],
+  },
+  {
+    id: 'sleep3',
+    title: '3 dager kickstart søvn',
+    subtitle: 'Myk kveldsrutine',
+    description: 'Bygg en rolig overgang til natt gjennom tre enkle kveldsøkter.',
+    days: [
+      { day: 1, exerciseId: 'sleep', duration: 90, label: 'Rolig kveld' },
+      { day: 2, exerciseId: 'stretch', duration: 90, label: 'Lang utpust' },
+      { day: 3, exerciseId: 'calm', duration: 90, label: 'Skru ned tempo' },
+    ],
+  },
   {
     id: 'calm7',
     title: '7 dager ro',
