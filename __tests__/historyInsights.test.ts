@@ -1,6 +1,13 @@
 import { getBestTimeBucket, getLast7DayTrend } from '@/utils/historyInsights';
 import type { SessionRecord } from '@/utils/storage';
 
+function toLocalDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 describe('history insights', () => {
   const baseNow = new Date('2026-04-01T12:00:00.000Z');
 
@@ -25,5 +32,22 @@ describe('history insights', () => {
       { id: '3', exerciseId: 'energy', duration: 60, completedAt: '2026-03-29T18:00:00.000Z' },
     ];
     expect(getBestTimeBucket(sessions)).toEqual({ bucket: 'morgen', count: 2 });
+  });
+
+  it('groups sessions by local calendar day', () => {
+    const boundarySession = new Date('2026-03-31T23:30:00.000Z');
+    const trend = getLast7DayTrend(
+      [
+        {
+          id: '1',
+          exerciseId: 'calm',
+          duration: 120,
+          completedAt: boundarySession.toISOString(),
+        },
+      ],
+      baseNow
+    );
+    const localKey = toLocalDateKey(boundarySession);
+    expect(trend.find((point) => point.date === localKey)?.minutes).toBe(2);
   });
 });

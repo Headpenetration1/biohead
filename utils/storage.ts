@@ -146,6 +146,53 @@ function parseAmbientMixPresets(raw: unknown): AmbientMixPreset[] {
     .filter((entry): entry is AmbientMixPreset => entry != null);
 }
 
+function parseFavorites(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const favorites: string[] = [];
+  for (const entry of raw) {
+    if (typeof entry !== 'string') continue;
+    const value = entry.trim();
+    if (!value || seen.has(value)) continue;
+    seen.add(value);
+    favorites.push(value);
+  }
+  return favorites;
+}
+
+function parseSessions(raw: unknown): SessionRecord[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((entry) => {
+      if (entry == null || typeof entry !== 'object') return null;
+      const cast = entry as Partial<SessionRecord>;
+      if (
+        typeof cast.id !== 'string' ||
+        typeof cast.exerciseId !== 'string' ||
+        typeof cast.completedAt !== 'string' ||
+        typeof cast.duration !== 'number' ||
+        Number.isNaN(cast.duration)
+      ) {
+        return null;
+      }
+      if (Number.isNaN(new Date(cast.completedAt).getTime())) return null;
+      const stressBefore = clampStressLevel(cast.stressBefore);
+      const effectScore = clampStressLevel(cast.effectScore);
+      return {
+        id: cast.id,
+        exerciseId: cast.exerciseId,
+        duration: Math.max(1, Math.min(60 * 60, Math.round(cast.duration))),
+        completedAt: cast.completedAt,
+        ...(stressBefore != null ? { stressBefore } : {}),
+        ...(effectScore != null ? { effectScore } : {}),
+        ...(cast.ambientSoundscape != null
+          ? { ambientSoundscape: parseAmbientSoundscape(cast.ambientSoundscape) }
+          : {}),
+      };
+    })
+    .filter((entry): entry is SessionRecord => entry != null);
+}
+
 function parseActiveProgram(raw: unknown): ActiveProgramState | undefined {
   if (raw == null || typeof raw !== 'object') return undefined;
   const cast = raw as Partial<ActiveProgramState>;
@@ -308,8 +355,8 @@ export async function loadAppData(): Promise<AppData> {
           typeof parsed.reminderAdaptiveEnabled === 'boolean'
             ? parsed.reminderAdaptiveEnabled
             : defaultAppData.reminderAdaptiveEnabled,
-        favorites: parsed.favorites ?? defaultAppData.favorites,
-        sessions: parsed.sessions ?? defaultAppData.sessions,
+        favorites: parseFavorites(parsed.favorites),
+        sessions: parseSessions(parsed.sessions),
         onboardingProfile: parseOnboardingProfile(
           (parsed as { onboardingProfile?: unknown }).onboardingProfile
         ),

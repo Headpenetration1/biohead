@@ -5,6 +5,13 @@ export interface DayTrendPoint {
   minutes: number;
 }
 
+function toLocalDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function startOfDay(date: Date): Date {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
@@ -13,17 +20,20 @@ function startOfDay(date: Date): Date {
 
 export function getLast7DayTrend(sessions: SessionRecord[], now = new Date()): DayTrendPoint[] {
   const end = startOfDay(now);
+  const minutesByDate = new Map<string, number>();
+  for (const session of sessions) {
+    const completedAt = new Date(session.completedAt);
+    if (Number.isNaN(completedAt.getTime())) continue;
+    const key = toLocalDateKey(completedAt);
+    minutesByDate.set(key, (minutesByDate.get(key) ?? 0) + session.duration / 60);
+  }
+
   const points: DayTrendPoint[] = [];
   for (let i = 6; i >= 0; i -= 1) {
     const day = new Date(end);
     day.setDate(end.getDate() - i);
-    const isoDate = day.toISOString().split('T')[0];
-    const minutes = Math.round(
-      sessions
-        .filter((session) => session.completedAt.startsWith(isoDate))
-        .reduce((sum, session) => sum + session.duration / 60, 0)
-    );
-    points.push({ date: isoDate, minutes });
+    const date = toLocalDateKey(day);
+    points.push({ date, minutes: Math.round(minutesByDate.get(date) ?? 0) });
   }
   return points;
 }
