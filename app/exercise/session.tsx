@@ -48,6 +48,7 @@ export default function SessionScreen() {
 
   useBreathAudio(
     state.soundMode,
+    state.cueVolume,
     state.ambientSoundscape,
     state.ambientMix,
     sessionActive,

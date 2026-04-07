@@ -66,6 +66,7 @@ type Action =
         hapticsEnabled: boolean;
         reduceMotion: boolean;
         soundMode: SoundMode;
+        cueVolume: number;
         ambientSoundscape: AmbientSoundscape;
         ambientMix: AmbientMix;
         ambientMixPresets: AmbientMixPreset[];
@@ -104,7 +105,10 @@ function reducer(state: AppState, action: Action): AppState {
         duration: action.payload.duration,
         completedAt: new Date().toISOString(),
         stressBefore: action.payload.stressBefore,
-        ambientSoundscape: state.soundMode === 'ambient' ? state.ambientSoundscape : undefined,
+        ambientSoundscape:
+          state.soundMode === 'ambient' || state.soundMode === 'mix'
+            ? state.ambientSoundscape
+            : undefined,
       };
 
       return {
@@ -285,6 +289,7 @@ export type PreferenceUpdates = Partial<{
   hapticsEnabled: boolean;
   reduceMotion: boolean;
   soundMode: SoundMode;
+  cueVolume: number;
   ambientSoundscape: AmbientSoundscape;
   ambientMix: AmbientMix;
   ambientMixPresets: AmbientMixPreset[];

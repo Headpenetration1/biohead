@@ -29,12 +29,15 @@ async function ensureAudioMode(): Promise<void> {
 
 export function useBreathAudio(
   soundMode: SoundMode,
+  cueVolume: number,
   ambientSoundscape: AmbientSoundscape,
   ambientMix: AmbientMix,
   isSessionActive: boolean,
   isPaused: boolean,
   currentPhase: BreathingPhase
 ) {
+  const ambientEnabled = soundMode === 'ambient' || soundMode === 'mix';
+  const cuesEnabled = (soundMode === 'cues' || soundMode === 'mix') && cueVolume > 0.01;
   const ambientRefs = useRef<Partial<Record<AmbientSoundscape, Audio.Sound>>>({});
   const cueRef = useRef<Audio.Sound | null>(null);
   const lastPhaseRef = useRef<BreathingPhase | null>(null);
@@ -80,7 +83,7 @@ export function useBreathAudio(
     let cancelled = false;
 
     (async () => {
-      if (soundMode !== 'ambient' || !isSessionActive || isPaused) {
+      if (!ambientEnabled || !isSessionActive || isPaused) {
         await unloadAmbient();
         return;
       }
@@ -121,11 +124,11 @@ export function useBreathAudio(
       cancelled = true;
       void unloadAmbient();
     };
-  }, [soundMode, ambientSoundscape, ambientMix, isSessionActive, isPaused, unloadAmbient]);
+  }, [ambientEnabled, ambientSoundscape, ambientMix, isSessionActive, isPaused, unloadAmbient]);
 
   // Phase cues
   useEffect(() => {
-    if (soundMode !== 'cues' || !isSessionActive || isPaused) {
+    if (!cuesEnabled || !isSessionActive || isPaused) {
       lastPhaseRef.current = currentPhase;
       return;
     }
@@ -149,7 +152,9 @@ export function useBreathAudio(
       await ensureAudioMode();
       await unloadCue();
       try {
-        const { sound } = await Audio.Sound.createAsync(source, { volume: 0.55 });
+        const effectiveCueVolume =
+          soundMode === 'mix' ? Math.min(1, Math.max(0.05, cueVolume) * 1.2) : cueVolume;
+        const { sound } = await Audio.Sound.createAsync(source, { volume: effectiveCueVolume });
         cueRef.current = sound;
         sound.setOnPlaybackStatusUpdate((status) => {
           if (status.isLoaded && status.didJustFinish) {
@@ -162,7 +167,7 @@ export function useBreathAudio(
         console.warn('Cue audio error', e);
       }
     })();
-  }, [soundMode, isSessionActive, isPaused, currentPhase, unloadCue]);
+  }, [cuesEnabled, isSessionActive, isPaused, currentPhase, unloadCue, cueVolume]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -182,10 +187,10 @@ export function useBreathAudio(
       for (const sound of sounds) {
         void sound.pauseAsync().catch(() => {});
       }
-    } else if (soundMode === 'ambient' && isSessionActive) {
+    } else if (ambientEnabled && isSessionActive) {
       for (const sound of sounds) {
         void sound.playAsync().catch(() => {});
       }
     }
-  }, [isPaused, soundMode, isSessionActive]);
+  }, [isPaused, ambientEnabled, isSessionActive]);
 }

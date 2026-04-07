@@ -9,7 +9,12 @@ import { getProgramById, type ProgramId } from '@/constants/programs';
 
 const STORAGE_KEY = '@biohead_data';
 
-export type SoundMode = 'off' | 'cues' | 'ambient';
+export type SoundMode = 'off' | 'cues' | 'ambient' | 'mix';
+
+function parseSoundMode(raw: unknown): SoundMode {
+  if (raw === 'off' || raw === 'cues' || raw === 'ambient' || raw === 'mix') return raw;
+  return 'off';
+}
 
 function parseAmbientSoundscape(raw: unknown): AmbientSoundscape {
   if (
@@ -285,9 +290,10 @@ export interface AppData {
   hapticsEnabled: boolean;
   reduceMotion: boolean;
   soundMode: SoundMode;
-  /** Background loop when soundMode === 'ambient' */
+  cueVolume: number;
+  /** Background loop when soundMode === 'ambient' or 'mix' */
   ambientSoundscape: AmbientSoundscape;
-  /** Multi-track mix volumes (0-1) when soundMode === 'ambient' */
+  /** Multi-track mix volumes (0-1) when soundMode === 'ambient' or 'mix' */
   ambientMix: AmbientMix;
   reminderEnabled: boolean;
   reminderTimes: ReminderTime[];
@@ -317,6 +323,7 @@ export const defaultAppData: AppData = {
   hapticsEnabled: true,
   reduceMotion: false,
   soundMode: 'off',
+  cueVolume: 0.55,
   ambientSoundscape: 'wind',
   ambientMix: { ...DEFAULT_AMBIENT_MIX },
   reminderEnabled: false,
@@ -345,6 +352,11 @@ export async function loadAppData(): Promise<AppData> {
       return {
         ...defaultAppData,
         ...parsed,
+        soundMode: parseSoundMode(parsed.soundMode),
+        cueVolume:
+          typeof parsed.cueVolume === 'number' && !Number.isNaN(parsed.cueVolume)
+            ? Math.max(0, Math.min(1, parsed.cueVolume))
+            : defaultAppData.cueVolume,
         ambientSoundscape: parseAmbientSoundscape(parsed.ambientSoundscape),
         ambientMix: parseAmbientMix(
           parsed.ambientMix,
