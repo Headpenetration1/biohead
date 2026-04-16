@@ -62,7 +62,10 @@ export default function SessionScreen() {
     state.ambientMix,
     sessionActive,
     engine.isPaused,
-    engine.currentPhase
+    engine.currentPhase,
+    state.toneEnabled,
+    state.toneFrequency,
+    state.toneVolume
   );
 
   useEffect(() => {

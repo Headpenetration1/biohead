@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { Audio, type AVPlaybackStatus } from 'expo-av';
 import type { SoundMode } from '@/utils/storage';
 import type { BreathingPhase } from '@/constants/exercises';
+import { ensureToneFile } from '@/utils/toneGenerator';
 import {
   type AmbientMix,
   type AmbientSoundscape,
@@ -34,11 +35,15 @@ export function useBreathAudio(
   ambientMix: AmbientMix,
   isSessionActive: boolean,
   isPaused: boolean,
-  currentPhase: BreathingPhase
+  currentPhase: BreathingPhase,
+  toneEnabled = false,
+  toneFrequency = 157,
+  toneVolume = 0.5
 ) {
   const ambientEnabled = soundMode === 'ambient' || soundMode === 'mix';
   const cuesEnabled = (soundMode === 'cues' || soundMode === 'mix') && cueVolume > 0.01;
   const ambientRefs = useRef<Partial<Record<AmbientSoundscape, Audio.Sound>>>({});
+  const toneRef = useRef<Audio.Sound | null>(null);
   const cueRef = useRef<Audio.Sound | null>(null);
   const lastPhaseRef = useRef<BreathingPhase | null>(null);
 
@@ -64,6 +69,14 @@ export function useBreathAudio(
       } catch {
         /* ignore */
       }
+    }
+  }, []);
+
+  const unloadTone = useCallback(async () => {
+    if (toneRef.current) {
+      try { await toneRef.current.stopAsync(); } catch { /* ignore */ }
+      try { await toneRef.current.unloadAsync(); } catch { /* ignore */ }
+      toneRef.current = null;
     }
   }, []);
 
@@ -126,6 +139,49 @@ export function useBreathAudio(
     };
   }, [ambientEnabled, ambientSoundscape, ambientMix, isSessionActive, isPaused, unloadAmbient]);
 
+  // Tone generator loop
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      if (!toneEnabled || !isSessionActive || isPaused) {
+        await unloadTone();
+        return;
+      }
+      await ensureAudioMode();
+      if (cancelled) return;
+      await unloadTone();
+      if (cancelled) return;
+      try {
+        const fileUri = await ensureToneFile(toneFrequency);
+        if (cancelled) return;
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: fileUri },
+          { isLooping: true, volume: toneVolume }
+        );
+        if (cancelled) {
+          await sound.unloadAsync();
+          return;
+        }
+        toneRef.current = sound;
+        await sound.playAsync();
+      } catch (e) {
+        console.warn('Tone audio error', e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      void unloadTone();
+    };
+  }, [toneEnabled, toneFrequency, isSessionActive, isPaused, unloadTone]);
+
+  // Live-update tone volume without restarting
+  useEffect(() => {
+    if (!toneRef.current || !toneEnabled) return;
+    void toneRef.current.setVolumeAsync(toneVolume).catch(() => {});
+  }, [toneVolume, toneEnabled]);
+
   // Phase cues
   useEffect(() => {
     if (!cuesEnabled || !isSessionActive || isPaused) {
@@ -173,24 +229,26 @@ export function useBreathAudio(
   useEffect(() => {
     return () => {
       void unloadAmbient();
+      void unloadTone();
       void unloadCue();
     };
-  }, [unloadAmbient, unloadCue]);
+  }, [unloadAmbient, unloadTone, unloadCue]);
 
-  // Pause / resume ambient volume
+  // Pause / resume ambient + tone
   useEffect(() => {
-    const sounds = Object.values(ambientRefs.current).filter(
+    const ambientSounds = Object.values(ambientRefs.current).filter(
       (sound): sound is Audio.Sound => sound != null
     );
-    if (sounds.length === 0) return;
+    const allLoops = [...ambientSounds, ...(toneRef.current ? [toneRef.current] : [])];
+    if (allLoops.length === 0) return;
     if (isPaused) {
-      for (const sound of sounds) {
+      for (const sound of allLoops) {
         void sound.pauseAsync().catch(() => {});
       }
-    } else if (ambientEnabled && isSessionActive) {
-      for (const sound of sounds) {
+    } else if (isSessionActive) {
+      for (const sound of allLoops) {
         void sound.playAsync().catch(() => {});
       }
     }
-  }, [isPaused, ambientEnabled, isSessionActive]);
+  }, [isPaused, ambientEnabled, toneEnabled, isSessionActive]);
 }

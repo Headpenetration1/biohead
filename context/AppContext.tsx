@@ -77,6 +77,9 @@ type Action =
         reminderSkipIfDoneToday: boolean;
         weeklyGoalMinutes: number;
         weeklySessionGoal: number;
+        toneEnabled: boolean;
+        toneFrequency: number;
+        toneVolume: number;
         healthSyncEnabled: boolean;
       }>;
     }
@@ -300,6 +303,9 @@ export type PreferenceUpdates = Partial<{
   reminderSkipIfDoneToday: boolean;
   weeklyGoalMinutes: number;
   weeklySessionGoal: number;
+  toneEnabled: boolean;
+  toneFrequency: number;
+  toneVolume: number;
   healthSyncEnabled: boolean;
 }>;
 

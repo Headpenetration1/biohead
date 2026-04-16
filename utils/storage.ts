@@ -308,6 +308,9 @@ export interface AppData {
   stressCheck?: StressCheckSnapshot;
   weeklyGoalMinutes: number;
   weeklySessionGoal: number;
+  toneEnabled: boolean;
+  toneFrequency: number;
+  toneVolume: number;
   /** iOS: log Mindful Session to Apple Health when a session completes */
   healthSyncEnabled: boolean;
 }
@@ -339,6 +342,9 @@ export const defaultAppData: AppData = {
   stressCheck: undefined,
   weeklyGoalMinutes: 40,
   weeklySessionGoal: 5,
+  toneEnabled: false,
+  toneFrequency: 157,
+  toneVolume: 0.5,
   healthSyncEnabled: false,
 };
 
@@ -389,6 +395,18 @@ export async function loadAppData(): Promise<AppData> {
           typeof parsed.weeklySessionGoal === 'number' && parsed.weeklySessionGoal > 0
             ? Math.round(parsed.weeklySessionGoal)
             : defaultAppData.weeklySessionGoal,
+        toneEnabled:
+          typeof parsed.toneEnabled === 'boolean'
+            ? parsed.toneEnabled
+            : defaultAppData.toneEnabled,
+        toneFrequency:
+          typeof parsed.toneFrequency === 'number' && !Number.isNaN(parsed.toneFrequency)
+            ? Math.max(40, Math.min(1000, Math.round(parsed.toneFrequency)))
+            : defaultAppData.toneFrequency,
+        toneVolume:
+          typeof parsed.toneVolume === 'number' && !Number.isNaN(parsed.toneVolume)
+            ? Math.max(0, Math.min(1, parsed.toneVolume))
+            : defaultAppData.toneVolume,
       };
     }
     return defaultAppData;
