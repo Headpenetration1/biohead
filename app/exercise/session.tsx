@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, Pressable, Modal, StyleSheet, BackHandler, AppState } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useKeepAwake } from 'expo-keep-awake';
 import Animated, { FadeIn, FadeInDown, ZoomIn, BounceIn } from 'react-native-reanimated';
@@ -13,18 +13,11 @@ import { useHaptics } from '@/hooks/useHaptics';
 import { useBreathAudio } from '@/hooks/useBreathAudio';
 import { formatTime } from '@/utils/formatTime';
 import { logMindfulSessionIfEnabled } from '@/utils/appleHealthMindful';
-import type { SoundMode } from '@/utils/storage';
 import BreathingCircle from '@/components/BreathingCircle';
 import StreakBadge from '@/components/StreakBadge';
 import HapticButton from '@/components/HapticButton';
-
-const SOUND_MODE_CYCLE: SoundMode[] = ['off', 'ambient', 'cues', 'mix'];
-const SOUND_MODE_LABEL: Record<SoundMode, string> = {
-  off: '🔇',
-  cues: '🔔',
-  ambient: '🌿',
-  mix: '🎵',
-};
+import { ExerciseSoundStrip } from '@/components/ExerciseSoundStrip';
+import { getNextSoundMode } from '@/constants/sessionSoundUi';
 
 export default function SessionScreen() {
   useKeepAwake();
@@ -153,11 +146,14 @@ export default function SessionScreen() {
   }, [engine]);
 
   const cycleSoundMode = useCallback(() => {
-    const idx = SOUND_MODE_CYCLE.indexOf(state.soundMode);
-    const next = SOUND_MODE_CYCLE[(idx + 1) % SOUND_MODE_CYCLE.length];
-    updatePreferences({ soundMode: next });
+    updatePreferences({ soundMode: getNextSoundMode(state.soundMode) });
     light();
   }, [state.soundMode, updatePreferences, light]);
+
+  const toggleToneInSession = useCallback(() => {
+    updatePreferences({ toneEnabled: !state.toneEnabled });
+    light();
+  }, [state.toneEnabled, updatePreferences, light]);
 
   const handleQuit = useCallback(() => {
     engine.stop();
@@ -267,30 +263,19 @@ export default function SessionScreen() {
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <View style={[styles.bgGlow, { backgroundColor: exercise.glowColor }]} />
 
-      <View style={[styles.topBar, { top: insets.top + 12 }]}>
-        <Animated.View entering={FadeIn.delay(300).duration(400)}>
-          <Pressable
-            onPress={handlePauseResume}
-            style={styles.topButton}
-            accessibilityRole="button"
-            accessibilityLabel={engine.isPaused ? 'Fortsett økt' : 'Pause økt'}
-          >
-            <Text style={styles.topButtonIcon}>{engine.isPaused ? '▶' : '❚❚'}</Text>
-            <Text style={styles.topButtonText}>
-              {engine.isPaused ? 'Fortsett' : 'Pause'}
-            </Text>
-          </Pressable>
-        </Animated.View>
-
-        <View style={styles.topBarRight}>
+      <View style={[styles.topBarOuter, { top: insets.top + 12 }]}>
+        <View style={styles.topBarRow}>
           <Animated.View entering={FadeIn.delay(300).duration(400)}>
             <Pressable
-              onPress={cycleSoundMode}
-              style={[styles.topButton, state.soundMode !== 'off' && styles.topButtonActive]}
+              onPress={handlePauseResume}
+              style={styles.topButton}
               accessibilityRole="button"
-              accessibilityLabel={`Lyd: ${state.soundMode}. Trykk for å bytte`}
+              accessibilityLabel={engine.isPaused ? 'Fortsett økt' : 'Pause økt'}
             >
-              <Text style={styles.soundModeIcon}>{SOUND_MODE_LABEL[state.soundMode]}</Text>
+              <Text style={styles.topButtonIcon}>{engine.isPaused ? '▶' : '❚❚'}</Text>
+              <Text style={styles.topButtonText}>
+                {engine.isPaused ? 'Fortsett' : 'Pause'}
+              </Text>
             </Pressable>
           </Animated.View>
 
@@ -305,9 +290,21 @@ export default function SessionScreen() {
             </Pressable>
           </Animated.View>
         </View>
+
+        <Animated.View entering={FadeIn.delay(350).duration(400)}>
+          <ExerciseSoundStrip
+            soundMode={state.soundMode}
+            toneEnabled={state.toneEnabled}
+            toneFrequency={state.toneFrequency}
+            onCycleSoundMode={cycleSoundMode}
+            onToggleTone={toggleToneInSession}
+            onOpenMixer={() => router.push('/lydmikser' as Href)}
+            kickerText="Lyd under økt"
+          />
+        </Animated.View>
       </View>
 
-      <Animated.View entering={FadeIn.delay(200).duration(800)} style={styles.circleArea}>
+      <Animated.View entering={FadeIn.delay(200).duration(800)} style={[styles.circleArea, styles.circleAreaBelowSound]}>
         <BreathingCircle
           glowColor={exercise.glowColor}
           phaseLabel={engine.isPaused ? 'Pause' : engine.currentLabel}
@@ -397,15 +394,17 @@ const styles = StyleSheet.create({
     opacity: 0.1,
   },
 
-  topBar: {
+  topBarOuter: {
     position: 'absolute',
-    top: 0,
     left: 24,
     right: 24,
+    zIndex: 10,
+  },
+  topBarRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    zIndex: 10,
+    marginBottom: 10,
   },
   topButton: {
     flexDirection: 'row',
@@ -427,18 +426,6 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.sm,
     color: Colors.textPrimary,
   },
-  topBarRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  topButtonActive: {
-    borderColor: `${Colors.greenAccent}44`,
-    backgroundColor: `${Colors.greenAccent}15`,
-  },
-  soundModeIcon: {
-    fontSize: 18,
-  },
   closeIcon: {
     fontSize: 16,
     color: Colors.textPrimary,
@@ -448,6 +435,10 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  /** Ekstra luft så pustesirkelen ikke skjules av det nye lyd-panelet øverst. */
+  circleAreaBelowSound: {
+    paddingTop: 108,
   },
 
   bottomLabel: {

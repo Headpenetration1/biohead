@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet, Alert } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   FadeIn,
@@ -15,12 +15,15 @@ import DurationPicker from '@/components/DurationPicker';
 import HapticButton from '@/components/HapticButton';
 import { useAppContext } from '@/context/AppContext';
 import { useHaptics } from '@/hooks/useHaptics';
+import { ExerciseSoundStrip } from '@/components/ExerciseSoundStrip';
+import { getNextSoundMode } from '@/constants/sessionSoundUi';
 
 export default function ExerciseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { state, toggleFavorite, setExerciseDuration, saveSessionSetup, setStressCheck } = useAppContext();
+  const { state, toggleFavorite, setExerciseDuration, saveSessionSetup, setStressCheck, updatePreferences } =
+    useAppContext();
   const { light } = useHaptics(state.hapticsEnabled);
 
   const exercise = exercises.find((e) => e.id === id);
@@ -47,6 +50,16 @@ export default function ExerciseDetailScreen() {
     },
     [exercise, setExerciseDuration]
   );
+
+  const cycleSoundMode = useCallback(() => {
+    updatePreferences({ soundMode: getNextSoundMode(state.soundMode) });
+    light();
+  }, [state.soundMode, updatePreferences, light]);
+
+  const toggleToneBeforeSession = useCallback(() => {
+    updatePreferences({ toneEnabled: !state.toneEnabled });
+    light();
+  }, [state.toneEnabled, updatePreferences, light]);
 
   if (!exercise) {
     return (
@@ -161,14 +174,15 @@ export default function ExerciseDetailScreen() {
         entering={FadeInDown.delay(300).duration(500).springify()}
         style={styles.startSection}
       >
-        <Pressable
-          onPress={() => router.push('/lydmikser')}
-          style={styles.soundMixerLink}
-          accessibilityRole="button"
-          accessibilityLabel="Åpne Lydmikser"
-        >
-          <Text style={styles.soundMixerLinkText}>🔊 Åpne Lydmikser</Text>
-        </Pressable>
+        <ExerciseSoundStrip
+          soundMode={state.soundMode}
+          toneEnabled={state.toneEnabled}
+          toneFrequency={state.toneFrequency}
+          onCycleSoundMode={cycleSoundMode}
+          onToggleTone={toggleToneBeforeSession}
+          onOpenMixer={() => router.push('/lydmikser' as Href)}
+          kickerText="Lyd før neste økt"
+        />
         <Text style={styles.sectionLabel}>Stress før økt</Text>
         <View style={styles.stressRow}>
           {[1, 2, 3, 4, 5].map((level) => {
@@ -372,20 +386,6 @@ const styles = StyleSheet.create({
     maxWidth: 340,
     marginBottom: 32,
     gap: 10,
-  },
-  soundMixerLink: {
-    alignSelf: 'center',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: `${Colors.greenAccent}66`,
-    backgroundColor: `${Colors.greenAccent}18`,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  soundMixerLinkText: {
-    fontFamily: Typography.fontFamily.semibold,
-    fontSize: Typography.sizes.sm,
-    color: Colors.greenAccent,
   },
   stressRow: {
     flexDirection: 'row',
