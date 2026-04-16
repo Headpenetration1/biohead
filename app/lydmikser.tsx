@@ -8,7 +8,6 @@ import Slider from '@react-native-community/slider';
 import { Colors } from '@/constants/colors';
 import { Typography } from '@/constants/typography';
 import { useAppContext } from '@/context/AppContext';
-import type { SoundMode } from '@/utils/storage';
 import { ensureToneFile, TONE_PRESETS } from '@/utils/toneGenerator';
 import {
   type AmbientSoundscape,
@@ -17,21 +16,6 @@ import {
   AMBIENT_SOUNDSCAPE_IDS,
   AMBIENT_SOUNDSCAPE_OPTIONS,
 } from '@/constants/ambientSounds';
-
-const SOUND_OPTIONS: { mode: SoundMode; label: string; sub: string }[] = [
-  { mode: 'off', label: 'Av', sub: 'Kun stille og haptikk' },
-  { mode: 'cues', label: 'Signaler', sub: 'Korte toner ved fasebytte' },
-  {
-    mode: 'ambient',
-    label: 'Natur / ambient',
-    sub: 'Bakgrunnslyder under økt',
-  },
-  {
-    mode: 'mix',
-    label: 'Mikser',
-    sub: 'Kombiner signaler + natur/ambient',
-  },
-];
 
 let audioModeReady = false;
 
@@ -142,10 +126,7 @@ export default function SoundMixerScreen() {
   useEffect(() => {
     let cancelled = false;
     const runPreview = async () => {
-      const shouldPreviewAmbient =
-        (state.soundMode === 'ambient' && isPreviewing) ||
-        (state.soundMode === 'mix' && !isTonePreviewing);
-      if (!shouldPreviewAmbient) {
+      if (!isPreviewing) {
         await stopPreview();
         return;
       }
@@ -178,7 +159,7 @@ export default function SoundMixerScreen() {
     return () => {
       cancelled = true;
     };
-  }, [isPreviewing, isTonePreviewing, state.soundMode, state.ambientMix, stopPreview]);
+  }, [isPreviewing, state.ambientMix, stopPreview]);
 
   useEffect(() => {
     return () => {
@@ -225,8 +206,6 @@ export default function SoundMixerScreen() {
 
   const disableAmbientPreviewToggle = previewBusy || (!isPreviewing && (isTonePreviewing || toneBusy));
   const disableTonePreviewToggle = toneBusy || (!isTonePreviewing && (isPreviewing || previewBusy));
-  const isAmbientMode = state.soundMode === 'ambient' || state.soundMode === 'mix';
-  const isMixMode = state.soundMode === 'mix';
   const toneGeneratorSection = (
     <View style={styles.toneSection}>
       <View style={styles.toneHeaderRow}>
@@ -351,173 +330,159 @@ export default function SoundMixerScreen() {
         <Text style={styles.title}>Lydmikser</Text>
       </View>
       <View style={styles.card}>
-        {SOUND_OPTIONS.map((opt, i) => (
-          <View key={opt.mode}>
-            {i > 0 ? <View style={styles.divider} /> : null}
-            <Pressable onPress={() => updatePreferences({ soundMode: opt.mode })} style={styles.soundRow}>
-              <View style={styles.rowText}>
-                <Text style={styles.rowTitle}>{opt.label}</Text>
-                <Text style={styles.rowSub}>{opt.sub}</Text>
-              </View>
-              <View style={[styles.radio, state.soundMode === opt.mode && styles.radioOn]} />
-            </Pressable>
+        <View style={styles.sessionToggleRow}>
+          <View style={styles.rowText}>
+            <Text style={styles.rowTitle}>🔔 Signaler</Text>
+            <Text style={styles.rowSub}>Korte toner ved fasebytte</Text>
           </View>
-        ))}
+          <Pressable
+            onPress={() => {
+              const cuesOn = state.soundMode === 'cues' || state.soundMode === 'mix';
+              const ambientOn = state.soundMode === 'ambient' || state.soundMode === 'mix';
+              if (cuesOn) {
+                updatePreferences({ soundMode: ambientOn ? 'ambient' : 'off' });
+              } else {
+                updatePreferences({ soundMode: ambientOn ? 'mix' : 'cues' });
+              }
+            }}
+            style={[styles.radio, (state.soundMode === 'cues' || state.soundMode === 'mix') && styles.radioOn]}
+            accessibilityRole="switch"
+            accessibilityLabel="Bruk signaler under økt"
+          />
+        </View>
       </View>
 
-      {isAmbientMode ? (
-        <View style={styles.card}>
-          {!isMixMode ? (
-            <>
-              <View style={styles.previewRow}>
-                <View style={styles.rowText}>
-                  <Text style={styles.rowTitle}>Forhåndslytt miks</Text>
-                  <Text style={styles.rowSub}>Hør lydene før du starter en økt</Text>
-                </View>
-                <Pressable
-                  onPress={() => setIsPreviewing((prev) => !prev)}
-                  disabled={disableAmbientPreviewToggle}
-                  style={({ pressed }) => [
-                    styles.previewBtn,
-                    isPreviewing && styles.previewBtnActive,
-                    pressed && styles.previewBtnPressed,
-                    disableAmbientPreviewToggle && styles.previewBtnDisabled,
-                  ]}
-                >
-                  <Text style={[styles.previewBtnText, isPreviewing && styles.previewBtnTextActive]}>
-                    {previewBusy ? 'Laster…' : isPreviewing ? 'Stopp' : 'Spill av'}
-                  </Text>
-                </Pressable>
-              </View>
-              <View style={styles.divider} />
-            </>
-          ) : null}
-          {!isMixMode ? (
-            <>
-              <Text style={styles.presetLabel}>Hurtigvalg (solo)</Text>
-              <View style={styles.soundscapeList}>
-                {AMBIENT_SOUNDSCAPE_OPTIONS.map((opt) => {
-                  const active = state.ambientSoundscape === opt.id && isSoloMix(state.ambientMix, opt.id);
-                  return (
-                    <Pressable
-                      key={opt.id}
-                      onPress={() => setAmbientSolo(opt.id)}
-                      style={[styles.soundscapeChip, active && styles.soundscapeChipActive]}
-                    >
-                      <Text style={[styles.soundscapeTitle, active && styles.soundscapeTitleActive]}>
-                        {opt.label}
-                      </Text>
-                      <Text style={styles.soundscapeSub} numberOfLines={2}>
-                        {opt.sub}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              <View style={styles.divider} />
-              <View style={styles.sessionToggleRow}>
-                <View style={styles.rowText}>
-                  <Text style={styles.rowTitle}>Bruk under økt</Text>
-                  <Text style={styles.rowSub}>Spill naturlyder under pusteøvelser</Text>
-                </View>
-                <Pressable
-                  onPress={() => updatePreferences({ soundMode: state.soundMode === 'ambient' ? 'off' : 'ambient' })}
-                  style={[styles.radio, state.soundMode === 'ambient' && styles.radioOn]}
-                  accessibilityRole="switch"
-                  accessibilityLabel="Bruk naturlyder under økt"
-                />
-              </View>
-            </>
-          ) : null}
-          {isMixMode ? (
-            <>
-              <Text style={styles.presetLabel}>Mikser (kombiner lyder)</Text>
-              <View style={styles.mixList}>
-                {AMBIENT_SOUNDSCAPE_OPTIONS.map((opt) => {
-                  const level = state.ambientMix[opt.id] ?? 0;
-                  const pct = Math.round(level * 100);
-                  return (
-                    <View key={`mix-${opt.id}`} style={styles.mixRow}>
-                      <View style={styles.mixInfo}>
-                        <Text style={styles.mixTitle}>{opt.label}</Text>
-                        <Text style={styles.mixSub}>{pct}%</Text>
-                      </View>
-                      <View style={styles.mixControls}>
-                        <Pressable onPress={() => setAmbientLevel(opt.id, level - 0.2)} style={styles.mixBtn}>
-                          <Text style={styles.mixBtnText}>−</Text>
-                        </Pressable>
-                        <Pressable onPress={() => setAmbientLevel(opt.id, level + 0.2)} style={styles.mixBtn}>
-                          <Text style={styles.mixBtnText}>+</Text>
-                        </Pressable>
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
-              <View style={styles.sessionToggleRow}>
-                <View style={styles.rowText}>
-                  <Text style={styles.rowTitle}>Bruk under økt</Text>
-                  <Text style={styles.rowSub}>Spill miksen under pusteøvelser</Text>
-                </View>
-                <Pressable
-                  onPress={() => updatePreferences({ soundMode: state.soundMode === 'mix' ? 'off' : 'mix' })}
-                  style={[styles.radio, state.soundMode === 'mix' && styles.radioOn]}
-                  accessibilityRole="switch"
-                  accessibilityLabel="Bruk miksen under økt"
-                />
-              </View>
-              <View style={styles.divider} />
-              <Text style={styles.presetLabel}>Tone generator (beta)</Text>
-              {toneGeneratorSection}
-              <View style={styles.divider} />
-              <Text style={styles.presetLabel}>Lagrede mikser</Text>
-              <View style={styles.mixList}>
-                <TextInput
-                  value={mixNameDraft}
-                  onChangeText={setMixNameDraft}
-                  placeholder="Navn på miks (f.eks. Kveld ro)"
-                  placeholderTextColor={Colors.textMuted}
-                  style={styles.mixNameInput}
-                  maxLength={40}
-                />
-                <Pressable
-                  onPress={() => {
-                    saveAmbientPreset(mixNameDraft.trim() || undefined);
-                    setMixNameDraft('');
-                  }}
-                  style={styles.saveMixBtn}
-                >
-                  <Text style={styles.saveMixBtnText}>Lagre nåværende miks</Text>
-                </Pressable>
-                {state.ambientMixPresets.length === 0 ? (
-                  <Text style={styles.mixEmpty}>Ingen lagrede mikser ennå.</Text>
-                ) : (
-                  state.ambientMixPresets.map((preset) => (
-                    <View key={preset.id} style={styles.presetMixRow}>
-                      <View style={styles.presetMixApply}>
-                        <Text style={styles.presetMixName}>{preset.name}</Text>
-                      </View>
-                      <Pressable onPress={() => applyAmbientPreset(preset.id)} style={styles.presetMixUse}>
-                        <Text style={styles.presetMixUseText}>Bruk</Text>
-                      </Pressable>
-                      <Pressable onPress={() => deleteAmbientPreset(preset.id)} style={styles.presetMixDelete}>
-                        <Text style={styles.presetMixDeleteText}>Slett</Text>
-                      </Pressable>
-                    </View>
-                  ))
-                )}
-              </View>
-            </>
-          ) : null}
+      <View style={styles.card}>
+        <View style={styles.sessionToggleRow}>
+          <View style={styles.rowText}>
+            <Text style={styles.rowTitle}>🌿 Natur / ambient</Text>
+            <Text style={styles.rowSub}>Bakgrunnslyder under pusteøvelser</Text>
+          </View>
+          <Pressable
+            onPress={() => {
+              const ambientOn = state.soundMode === 'ambient' || state.soundMode === 'mix';
+              const cuesOn = state.soundMode === 'cues' || state.soundMode === 'mix';
+              if (ambientOn) {
+                updatePreferences({ soundMode: cuesOn ? 'cues' : 'off' });
+              } else {
+                updatePreferences({ soundMode: cuesOn ? 'mix' : 'ambient' });
+              }
+            }}
+            style={[styles.radio, (state.soundMode === 'ambient' || state.soundMode === 'mix') && styles.radioOn]}
+            accessibilityRole="switch"
+            accessibilityLabel="Bruk naturlyder under økt"
+          />
         </View>
-      ) : null}
+        <View style={styles.divider} />
+        <View style={styles.previewRow}>
+          <View style={styles.rowText}>
+            <Text style={styles.rowTitle}>Forhåndslytt</Text>
+            <Text style={styles.rowSub}>Hør lydene før du starter en økt</Text>
+          </View>
+          <Pressable
+            onPress={() => setIsPreviewing((prev) => !prev)}
+            disabled={disableAmbientPreviewToggle}
+            style={({ pressed }) => [
+              styles.previewBtn,
+              isPreviewing && styles.previewBtnActive,
+              pressed && styles.previewBtnPressed,
+              disableAmbientPreviewToggle && styles.previewBtnDisabled,
+            ]}
+          >
+            <Text style={[styles.previewBtnText, isPreviewing && styles.previewBtnTextActive]}>
+              {previewBusy ? 'Laster…' : isPreviewing ? 'Stopp' : 'Spill av'}
+            </Text>
+          </Pressable>
+        </View>
+        <View style={styles.divider} />
+        <Text style={styles.presetLabel}>Hurtigvalg (solo)</Text>
+        <View style={styles.soundscapeList}>
+          {AMBIENT_SOUNDSCAPE_OPTIONS.map((opt) => {
+            const active = state.ambientSoundscape === opt.id && isSoloMix(state.ambientMix, opt.id);
+            return (
+              <Pressable
+                key={opt.id}
+                onPress={() => setAmbientSolo(opt.id)}
+                style={[styles.soundscapeChip, active && styles.soundscapeChipActive]}
+              >
+                <Text style={[styles.soundscapeTitle, active && styles.soundscapeTitleActive]}>
+                  {opt.label}
+                </Text>
+                <Text style={styles.soundscapeSub} numberOfLines={2}>
+                  {opt.sub}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <View style={styles.divider} />
+        <Text style={styles.presetLabel}>Mikser (kombiner lyder)</Text>
+        <View style={styles.mixList}>
+          {AMBIENT_SOUNDSCAPE_OPTIONS.map((opt) => {
+            const level = state.ambientMix[opt.id] ?? 0;
+            const pct = Math.round(level * 100);
+            return (
+              <View key={`mix-${opt.id}`} style={styles.mixRow}>
+                <View style={styles.mixInfo}>
+                  <Text style={styles.mixTitle}>{opt.label}</Text>
+                  <Text style={styles.mixSub}>{pct}%</Text>
+                </View>
+                <View style={styles.mixControls}>
+                  <Pressable onPress={() => setAmbientLevel(opt.id, level - 0.2)} style={styles.mixBtn}>
+                    <Text style={styles.mixBtnText}>−</Text>
+                  </Pressable>
+                  <Pressable onPress={() => setAmbientLevel(opt.id, level + 0.2)} style={styles.mixBtn}>
+                    <Text style={styles.mixBtnText}>+</Text>
+                  </Pressable>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+        <View style={styles.divider} />
+        <Text style={styles.presetLabel}>Lagrede mikser</Text>
+        <View style={styles.mixList}>
+          <TextInput
+            value={mixNameDraft}
+            onChangeText={setMixNameDraft}
+            placeholder="Navn på miks (f.eks. Kveld ro)"
+            placeholderTextColor={Colors.textMuted}
+            style={styles.mixNameInput}
+            maxLength={40}
+          />
+          <Pressable
+            onPress={() => {
+              saveAmbientPreset(mixNameDraft.trim() || undefined);
+              setMixNameDraft('');
+            }}
+            style={styles.saveMixBtn}
+          >
+            <Text style={styles.saveMixBtnText}>Lagre nåværende miks</Text>
+          </Pressable>
+          {state.ambientMixPresets.length === 0 ? (
+            <Text style={styles.mixEmpty}>Ingen lagrede mikser ennå.</Text>
+          ) : (
+            state.ambientMixPresets.map((preset) => (
+              <View key={preset.id} style={styles.presetMixRow}>
+                <View style={styles.presetMixApply}>
+                  <Text style={styles.presetMixName}>{preset.name}</Text>
+                </View>
+                <Pressable onPress={() => applyAmbientPreset(preset.id)} style={styles.presetMixUse}>
+                  <Text style={styles.presetMixUseText}>Bruk</Text>
+                </Pressable>
+                <Pressable onPress={() => deleteAmbientPreset(preset.id)} style={styles.presetMixDelete}>
+                  <Text style={styles.presetMixDeleteText}>Slett</Text>
+                </Pressable>
+              </View>
+            ))
+          )}
+        </View>
+      </View>
 
-      {state.soundMode === 'cues' ? (
-        <View style={styles.card}>
-          <Text style={styles.presetLabel}>Tone generator (beta)</Text>
-          {toneGeneratorSection}
-        </View>
-      ) : null}
+      <View style={styles.card}>
+        <Text style={styles.presetLabel}>🎵 Tone generator (beta)</Text>
+        {toneGeneratorSection}
+      </View>
     </ScrollView>
   );
 }
@@ -584,13 +549,6 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.sm,
     color: Colors.textSecondary,
     marginTop: 2,
-  },
-  soundRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
   },
   radio: {
     width: 22,
