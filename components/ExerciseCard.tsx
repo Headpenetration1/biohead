@@ -53,9 +53,8 @@ export default function ExerciseCard({
     onPress();
   }, [light, onPress]);
 
-  const IconComponent = (
-    LucideIcons as unknown as Record<string, React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>>
-  )[exercise.icon];
+  const LucideMap = LucideIcons as unknown as Record<string, React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>>;
+  const IconComponent = LucideMap[exercise.icon] ?? LucideMap['Circle'];
 
   return (
     <AnimatedPressable
@@ -75,11 +74,7 @@ export default function ExerciseCard({
       <View style={[styles.glowBg, { backgroundColor: exercise.glowColor }]} />
 
       <View style={[styles.iconContainer, { backgroundColor: `${exercise.glowColor}25`, borderColor: `${exercise.glowColor}40` }]}>
-        {IconComponent ? (
-          <IconComponent size={28} color={exercise.glowColor} strokeWidth={2} />
-        ) : (
-          <Text style={styles.iconFallback}>{exercise.icon}</Text>
-        )}
+        <IconComponent size={28} color={exercise.glowColor} strokeWidth={2} />
       </View>
 
       <View style={styles.textContainer}>
@@ -138,10 +133,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-  },
-  iconFallback: {
-    fontSize: 26,
-    color: Colors.textPrimary,
   },
   textContainer: {
     flex: 1,

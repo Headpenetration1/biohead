@@ -6,6 +6,7 @@ import { getToday } from '@/utils/formatTime';
 
 const ANDROID_CHANNEL_ID = 'biohead-daily';
 const REMINDER_CATEGORY_ID = 'biohead-reminder-actions';
+const DAILY_REMINDER_ID_PREFIX = 'biohead-daily-';
 const ACTION_SNOOZE_30 = 'snooze-30-min';
 const ACTION_SKIP_TODAY = 'skip-today';
 const SKIP_TODAY_KEY = '@biohead_reminder_skip_today';
@@ -136,9 +137,12 @@ export function getAdaptiveReminderTimes(
   return [preferred];
 }
 
-/**
- * Cancels all scheduled notifications and, if enabled, schedules one or more daily local notifications.
- */
+async function cancelBioheadDailyReminders(): Promise<void> {
+  const all = await Notifications.getAllScheduledNotificationsAsync();
+  const ours = all.filter((n) => n.identifier.startsWith(DAILY_REMINDER_ID_PREFIX));
+  await Promise.all(ours.map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)));
+}
+
 export async function syncDailyReminder(
   enabled: boolean,
   reminderTimes: ReminderTime[],
@@ -150,7 +154,7 @@ export async function syncDailyReminder(
     lastSessionDate?: string;
   }
 ): Promise<void> {
-  await Notifications.cancelAllScheduledNotificationsAsync();
+  await cancelBioheadDailyReminders();
   if (!enabled) return;
   if (await shouldSkipToday()) return;
   if (options?.skipIfDoneToday && options.lastSessionDate === getToday()) return;
@@ -166,10 +170,12 @@ export async function syncDailyReminder(
       : normalizeReminderTimes(reminderTimes);
   if (times.length === 0) return;
 
+  let idCounter = 0;
   for (const reminder of times) {
     if (options?.quietWeekends) {
       for (const weekday of [2, 3, 4, 5, 6]) {
         await Notifications.scheduleNotificationAsync({
+          identifier: `${DAILY_REMINDER_ID_PREFIX}${idCounter++}`,
           content: {
             title: 'Biohead',
             body: 'Ta en kort pustepause – du fortjener det.',
@@ -190,6 +196,7 @@ export async function syncDailyReminder(
     }
 
     await Notifications.scheduleNotificationAsync({
+      identifier: `${DAILY_REMINDER_ID_PREFIX}${idCounter++}`,
       content: {
         title: 'Biohead',
         body: 'Ta en kort pustepause – du fortjener det.',

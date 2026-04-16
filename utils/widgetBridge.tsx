@@ -2,6 +2,12 @@ import React from 'react';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import type { WidgetSnapshot } from '@/utils/storage';
+import { exercises } from '@/constants/exercises';
+
+function exerciseTitle(id: string | undefined): string | undefined {
+  if (!id) return undefined;
+  return exercises.find((e) => e.id === id)?.title;
+}
 
 let iosWidget: { updateSnapshot: (props: WidgetSnapshot) => void } | null = null;
 let androidRegistered = false;
@@ -24,9 +30,9 @@ function setupIosWidget(): void {
     const swiftUI = require('@expo/ui/swift-ui') as typeof import('@expo/ui/swift-ui');
     iosWidget = widgets.createWidget<WidgetSnapshot>('BioheadHomeWidget', (props) => {
       'widget';
-      const primary = props.recommendedExerciseId ?? 'Åpne Biohead';
+      const primary = exerciseTitle(props.recommendedExerciseId) ?? 'Åpne Biohead';
       const secondary = props.lastSessionExerciseId
-        ? `Sist brukt: ${props.lastSessionExerciseId}`
+        ? `Sist brukt: ${exerciseTitle(props.lastSessionExerciseId) ?? props.lastSessionExerciseId}`
         : 'Pusteøvelse nå';
       return (
         <swiftUI.VStack spacing={6}>
@@ -46,6 +52,7 @@ function setupAndroidWidget(snapshot: WidgetSnapshot): void {
   try {
     const widget = require('react-native-android-widget') as typeof import('react-native-android-widget');
     const deepLink = getDeepLink(snapshot);
+    const recommendedLabel = exerciseTitle(snapshot.recommendedExerciseId);
     if (!androidRegistered) {
       widget.registerWidgetTaskHandler(async ({ renderWidget }) => {
         renderWidget(
@@ -65,7 +72,7 @@ function setupAndroidWidget(snapshot: WidgetSnapshot): void {
               style={{ color: '#0e2025', fontSize: 18, fontWeight: '700' }}
             />
             <widget.TextWidget
-              text={snapshot.recommendedExerciseId ? `Anbefalt: ${snapshot.recommendedExerciseId}` : 'Åpne appen'}
+              text={recommendedLabel ? `Anbefalt: ${recommendedLabel}` : 'Åpne appen'}
               style={{ color: '#46917c', marginTop: 6, fontSize: 14 }}
             />
           </widget.FlexWidget>
@@ -90,7 +97,7 @@ function setupAndroidWidget(snapshot: WidgetSnapshot): void {
         >
           <widget.TextWidget text="Biohead" style={{ color: '#0e2025', fontSize: 18, fontWeight: '700' }} />
           <widget.TextWidget
-            text={snapshot.recommendedExerciseId ? `Anbefalt: ${snapshot.recommendedExerciseId}` : 'Pusteøvelse nå'}
+            text={recommendedLabel ? `Anbefalt: ${recommendedLabel}` : 'Pusteøvelse nå'}
             style={{ color: '#46917c', marginTop: 6, fontSize: 14 }}
           />
         </widget.FlexWidget>

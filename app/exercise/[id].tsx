@@ -51,9 +51,8 @@ export default function ExerciseDetailScreen() {
   if (!exercise) return null;
 
   const isFavorite = state.favorites.includes(exercise.id);
-  const IconComponent = (
-    LucideIcons as unknown as Record<string, React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>>
-  )[exercise.icon];
+  const LucideMap = LucideIcons as unknown as Record<string, React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>>;
+  const IconComponent = LucideMap[exercise.icon] ?? LucideMap['Circle'];
 
   return (
     <ScrollView
@@ -102,9 +101,7 @@ export default function ExerciseDetailScreen() {
         ]}
       >
         <Animated.View style={styles.iconContainer} entering={ZoomIn.duration(600).springify()}>
-          {IconComponent ? (
-            <IconComponent size={72} color={exercise.glowColor} strokeWidth={1.5} />
-          ) : null}
+          <IconComponent size={72} color={exercise.glowColor} strokeWidth={1.5} />
         </Animated.View>
       </Animated.View>
 

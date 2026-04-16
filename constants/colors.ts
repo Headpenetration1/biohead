@@ -1,13 +1,20 @@
 export const Colors = {
   // Primære brand-farger
-  darkBase: '#FFF9ED', // Main background (beige)
-  darkBaseLighter: '#FFF9ED',
-  darkBaseCard: 'rgba(14, 32, 37, 0.04)',
+  background: '#FFF9ED',
+  backgroundAlt: '#FFF9ED',
+  cardBackground: 'rgba(14, 32, 37, 0.04)',
   greenAccent: '#46917c',
   greenAccentHover: '#5ca08d',
   greenAccentSoft: 'rgba(70, 145, 124, 0.18)',
   deepBlue: '#1e495d',
   lightBeige: '#FFF9ED',
+
+  /** @deprecated Use `background` instead. */
+  darkBase: '#FFF9ED',
+  /** @deprecated Use `backgroundAlt` instead. */
+  darkBaseLighter: '#FFF9ED',
+  /** @deprecated Use `cardBackground` instead. */
+  darkBaseCard: 'rgba(14, 32, 37, 0.04)',
 
   // Tekst
   textPrimary: '#0e2025',
@@ -28,6 +35,6 @@ export const Colors = {
   stretchGlow: '#46917c',
 
   // System
-  error: '#1e495d',
+  error: '#c0392b',
   success: '#46917c',
 } as const;

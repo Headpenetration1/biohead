@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef } from 'react';
 import {
   AMBIENT_SOUNDSCAPE_IDS,
   type AmbientSoundscape,
@@ -342,11 +342,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (!state.isLoading) {
+    if (state.isLoading) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
       const { isLoading, ...data } = state;
       saveAppData(data);
-    }
+    }, 500);
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
   }, [state]);
 
   useEffect(() => {
