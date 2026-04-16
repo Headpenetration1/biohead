@@ -1,6 +1,6 @@
 import React, { useMemo, useCallback } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet, Share, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { Colors } from '@/constants/colors';
@@ -9,6 +9,7 @@ import { exercises } from '@/constants/exercises';
 import { AMBIENT_SOUNDSCAPE_OPTIONS } from '@/constants/ambientSounds';
 import { useAppContext } from '@/context/AppContext';
 import { getBestTimeBucket, getLast7DayTrend } from '@/utils/historyInsights';
+import { toLocalDateKey } from '@/utils/formatTime';
 
 function formatShortDate(iso: string): string {
   try {
@@ -43,7 +44,7 @@ export default function HistoryScreen() {
       (a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime()
     );
     for (const s of sorted) {
-      const day = s.completedAt.split('T')[0];
+      const day = toLocalDateKey(new Date(s.completedAt));
       const list = byDay.get(day) ?? [];
       list.push(s);
       byDay.set(day, list);
@@ -117,7 +118,9 @@ export default function HistoryScreen() {
         };
       })
       .filter((entry): entry is { id: string; title: string; avg: number; count: number } => entry != null)
-      .sort((a, b) => b.avg - a.avg)
+      // effectScore now reflects "stress after session" where lower = calmer,
+      // so the most effective exercises are the ones with the lowest average.
+      .sort((a, b) => a.avg - b.avg)
       .slice(0, 3);
   }, [state.sessions]);
   const bestEffectSoundscape = useMemo(() => {
@@ -134,7 +137,8 @@ export default function HistoryScreen() {
         avg: value.total / value.count,
         count: value.count,
       }))
-      .sort((a, b) => b.avg - a.avg)[0];
+      // Lower score = calmer, so ascending sort picks the most effective soundscape.
+      .sort((a, b) => a.avg - b.avg)[0];
     if (!best) return null;
     const label = AMBIENT_SOUNDSCAPE_OPTIONS.find((entry) => entry.id === best.soundscape)?.label ?? best.soundscape;
     return { ...best, label };
@@ -142,20 +146,32 @@ export default function HistoryScreen() {
 
   const exportSessionsJson = useCallback(async () => {
     if (state.sessions.length === 0) return;
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      app: 'biohead',
-      sessions: state.sessions,
+
+    const doShare = async () => {
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        app: 'biohead',
+        sessions: state.sessions,
+      };
+      const message = JSON.stringify(payload, null, 2);
+      try {
+        await Share.share({
+          title: 'Biohead økter',
+          message,
+        });
+      } catch {
+        Alert.alert('Kunne ikke dele', 'Prøv igjen senere.');
+      }
     };
-    const message = JSON.stringify(payload, null, 2);
-    try {
-      await Share.share({
-        title: 'Biohead økter',
-        message,
-      });
-    } catch {
-      Alert.alert('Kunne ikke dele', 'Prøv igjen senere.');
-    }
+
+    Alert.alert(
+      'Eksporter øktlogg?',
+      'Filen inneholder alle økter, datoer, varighet og stress-målinger. Del bare med noen du stoler på.',
+      [
+        { text: 'Avbryt', style: 'cancel' },
+        { text: 'Del', style: 'default', onPress: () => void doShare() },
+      ]
+    );
   }, [state.sessions]);
 
   return (
@@ -168,7 +184,13 @@ export default function HistoryScreen() {
       showsVerticalScrollIndicator={false}
     >
       <Animated.View entering={FadeIn.duration(400)}>
-        <Pressable onPress={() => router.back()} style={styles.backButton}>
+        <Pressable
+          onPress={() => router.back()}
+          style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="Tilbake"
+          hitSlop={8}
+        >
           <Text style={styles.backArrow}>‹</Text>
           <Text style={styles.backText}>Tilbake</Text>
         </Pressable>
@@ -241,40 +263,43 @@ export default function HistoryScreen() {
             </Text>
           </View>
           <View style={styles.insightCard}>
-            <Text style={styles.insightTitle}>Post-økt effekt</Text>
+            <Text style={styles.insightTitle}>Stress etter økt</Text>
             <Text style={styles.insightBody}>
               {avgEffectScore != null
                 ? `${avgEffectScore.toFixed(1)}/5 i snitt`
-                : 'Ingen effekt-score enda'}
+                : 'Ingen måling enda'}
             </Text>
             {avgStressDelta != null ? (
               <Text style={styles.insightSub}>
-                Endring mot stress før økt: {avgStressDelta > 0 ? '-' : '+'}
-                {Math.abs(avgStressDelta).toFixed(1)}
+                {avgStressDelta > 0
+                  ? `Stresset faller i snitt med ${avgStressDelta.toFixed(1)} poeng`
+                  : avgStressDelta < 0
+                    ? `Stresset stiger i snitt med ${Math.abs(avgStressDelta).toFixed(1)} poeng`
+                    : 'Samme stressnivå i snitt'}
               </Text>
             ) : null}
           </View>
           <View style={styles.insightCard}>
-            <Text style={styles.insightTitle}>Best effekt per øvelse</Text>
+            <Text style={styles.insightTitle}>Mest beroligende øvelser</Text>
             {bestEffectExercises.length === 0 ? (
-              <Text style={styles.insightSub}>Sett effekt-score etter økter for å få innsikt.</Text>
+              <Text style={styles.insightSub}>Logg stress etter økter for å få innsikt.</Text>
             ) : (
               bestEffectExercises.map((entry) => (
                 <Text key={entry.id} style={styles.insightSub}>
-                  {entry.title}: {entry.avg.toFixed(1)}/5 ({entry.count} økter)
+                  {entry.title}: {entry.avg.toFixed(1)}/5 stress i snitt ({entry.count} økter)
                 </Text>
               ))
             )}
           </View>
           <View style={styles.insightCard}>
-            <Text style={styles.insightTitle}>Miks med høyest effekt</Text>
+            <Text style={styles.insightTitle}>Mest beroligende miks</Text>
             <Text style={styles.insightBody}>
               {bestEffectSoundscape
-                ? `${bestEffectSoundscape.label} (${bestEffectSoundscape.avg.toFixed(1)}/5)`
+                ? `${bestEffectSoundscape.label} (${bestEffectSoundscape.avg.toFixed(1)}/5 stress i snitt)`
                 : 'Ingen ambient-data enda'}
             </Text>
             {bestEffectSoundscape ? (
-              <Text style={styles.insightSub}>{bestEffectSoundscape.count} økter med score</Text>
+              <Text style={styles.insightSub}>{bestEffectSoundscape.count} økter med måling</Text>
             ) : null}
           </View>
         </>
@@ -282,7 +307,21 @@ export default function HistoryScreen() {
 
       <Text style={styles.sectionLabel}>Logg</Text>
       {grouped.length === 0 ? (
-        <Text style={styles.empty}>Ingen økter ennå.</Text>
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyEmoji} accessibilityElementsHidden>🌱</Text>
+          <Text style={styles.emptyTitle}>Ingen økter ennå</Text>
+          <Text style={styles.emptyBody}>
+            Når du fullfører en pusteøkt dukker den opp her med trender og dags-grupperinger.
+          </Text>
+          <Pressable
+            onPress={() => router.replace('/' as Href)}
+            style={styles.emptyCta}
+            accessibilityRole="button"
+            accessibilityLabel="Gå til forsiden og start en økt"
+          >
+            <Text style={styles.emptyCtaText}>Start første økt</Text>
+          </Pressable>
+        </View>
       ) : (
         grouped.map(([day, sessions]) => (
           <View key={day} style={styles.dayBlock}>
@@ -313,7 +352,7 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.darkBase,
+    backgroundColor: Colors.background,
   },
   content: {
     paddingHorizontal: 24,
@@ -483,6 +522,47 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.medium,
     fontSize: Typography.sizes.sm,
     color: Colors.textMuted,
+  },
+  emptyCard: {
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(14,32,37,0.08)',
+    backgroundColor: 'rgba(14,32,37,0.03)',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
+  },
+  emptyEmoji: {
+    fontSize: 36,
+  },
+  emptyTitle: {
+    fontFamily: Typography.fontFamily.bold,
+    fontSize: Typography.sizes.lg,
+    color: Colors.textPrimary,
+  },
+  emptyBody: {
+    fontFamily: Typography.fontFamily.regular,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    maxWidth: 280,
+  },
+  emptyCta: {
+    marginTop: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    backgroundColor: `${Colors.greenAccent}22`,
+    borderColor: `${Colors.greenAccent}66`,
+    borderWidth: 1,
+  },
+  emptyCtaText: {
+    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.sizes.sm,
+    color: Colors.greenAccent,
   },
   dayBlock: {
     marginBottom: 20,

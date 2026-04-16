@@ -127,7 +127,13 @@ export default function SettingsScreen() {
       showsVerticalScrollIndicator={false}
     >
       <Animated.View entering={FadeIn.duration(400)}>
-        <Pressable onPress={() => router.back()} style={styles.backButton}>
+        <Pressable
+          onPress={() => router.back()}
+          style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="Tilbake"
+          hitSlop={8}
+        >
           <Text style={styles.backArrow}>‹</Text>
           <Text style={styles.backText}>Tilbake</Text>
         </Pressable>
@@ -353,7 +359,7 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.darkBase,
+    backgroundColor: Colors.background,
   },
   content: {
     paddingHorizontal: 24,
@@ -432,58 +438,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(14,32,37,0.08)',
     marginLeft: 16,
   },
-  soundRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  previewRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 12,
-  },
-  previewBtn: {
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(14,32,37,0.16)',
-    backgroundColor: 'rgba(14,32,37,0.06)',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-  },
-  previewBtnActive: {
-    borderColor: `${Colors.greenAccent}88`,
-    backgroundColor: `${Colors.greenAccent}22`,
-  },
-  previewBtnPressed: {
-    opacity: 0.85,
-  },
-  previewBtnDisabled: {
-    opacity: 0.6,
-  },
-  previewBtnText: {
-    fontFamily: Typography.fontFamily.semibold,
-    fontSize: Typography.sizes.sm,
-    color: Colors.textSecondary,
-  },
-  previewBtnTextActive: {
-    color: Colors.greenAccent,
-  },
-  radio: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: 'rgba(14,32,37,0.2)',
-  },
-  radioOn: {
-    borderColor: Colors.greenAccent,
-    backgroundColor: Colors.greenAccent,
-  },
   presetLabel: {
     fontFamily: Typography.fontFamily.medium,
     fontSize: Typography.sizes.sm,
@@ -518,155 +472,6 @@ const styles = StyleSheet.create({
   },
   presetChipTextActive: {
     color: Colors.greenAccent,
-  },
-  soundscapeList: {
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-  },
-  soundscapeChip: {
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    backgroundColor: 'rgba(14,32,37,0.04)',
-    borderWidth: 1,
-    borderColor: 'rgba(14,32,37,0.08)',
-    gap: 4,
-  },
-  soundscapeChipActive: {
-    borderColor: Colors.greenAccent,
-    backgroundColor: `${Colors.greenAccent}18`,
-  },
-  soundscapeTitle: {
-    fontFamily: Typography.fontFamily.bold,
-    fontSize: Typography.sizes.sm,
-    color: Colors.textPrimary,
-  },
-  soundscapeTitleActive: {
-    color: Colors.greenAccent,
-  },
-  soundscapeSub: {
-    fontFamily: Typography.fontFamily.regular,
-    fontSize: 11,
-    color: Colors.textMuted,
-    lineHeight: 15,
-  },
-  mixList: {
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-    gap: 10,
-  },
-  mixRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(14,32,37,0.08)',
-    backgroundColor: 'rgba(14,32,37,0.04)',
-  },
-  mixInfo: {
-    flex: 1,
-  },
-  mixTitle: {
-    fontFamily: Typography.fontFamily.bold,
-    fontSize: Typography.sizes.sm,
-    color: Colors.textPrimary,
-  },
-  mixSub: {
-    fontFamily: Typography.fontFamily.regular,
-    fontSize: Typography.sizes.sm,
-    color: Colors.textMuted,
-    marginTop: 2,
-  },
-  mixControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  mixBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(14,32,37,0.12)',
-    backgroundColor: 'rgba(14,32,37,0.08)',
-  },
-  mixBtnText: {
-    fontFamily: Typography.fontFamily.bold,
-    fontSize: Typography.sizes.lg,
-    color: Colors.textPrimary,
-    marginTop: -1,
-  },
-  saveMixBtn: {
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: `${Colors.greenAccent}55`,
-    backgroundColor: `${Colors.greenAccent}18`,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-  },
-  saveMixBtnText: {
-    fontFamily: Typography.fontFamily.semibold,
-    fontSize: Typography.sizes.sm,
-    color: Colors.greenAccent,
-  },
-  mixEmpty: {
-    fontFamily: Typography.fontFamily.regular,
-    fontSize: Typography.sizes.sm,
-    color: Colors.textMuted,
-    paddingHorizontal: 4,
-  },
-  presetMixRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  presetMixApply: {
-    flex: 1,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(14,32,37,0.08)',
-    backgroundColor: 'rgba(14,32,37,0.04)',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-  },
-  presetMixName: {
-    fontFamily: Typography.fontFamily.semibold,
-    fontSize: Typography.sizes.sm,
-    color: Colors.textPrimary,
-  },
-  presetMixUse: {
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: `${Colors.greenAccent}66`,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    backgroundColor: `${Colors.greenAccent}1A`,
-  },
-  presetMixUseText: {
-    fontFamily: Typography.fontFamily.semibold,
-    fontSize: Typography.sizes.sm,
-    color: Colors.greenAccent,
-  },
-  presetMixDelete: {
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(14,32,37,0.12)',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    backgroundColor: 'rgba(14,32,37,0.06)',
-  },
-  presetMixDeleteText: {
-    fontFamily: Typography.fontFamily.medium,
-    fontSize: Typography.sizes.sm,
-    color: Colors.textSecondary,
   },
   dangerRow: {
     paddingVertical: 16,

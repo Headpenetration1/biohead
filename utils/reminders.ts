@@ -52,7 +52,7 @@ async function ensureReminderCategory(): Promise<void> {
   await Notifications.setNotificationCategoryAsync(REMINDER_CATEGORY_ID, [
     {
       identifier: ACTION_SNOOZE_30,
-      buttonTitle: 'Snooze 30 min',
+      buttonTitle: 'Utsett 30 min',
     },
     {
       identifier: ACTION_SKIP_TODAY,
@@ -133,7 +133,23 @@ export function getAdaptiveReminderTimes(
   const sortedHours = [...hourCounts.entries()].sort((a, b) => b[1] - a[1]);
   const preferredHour = sortedHours[0]?.[0];
   if (preferredHour == null) return normalizeReminderTimes(fallbackTimes);
-  const preferred: ReminderTime = { hour: preferredHour, minute: 0 };
+
+  // Rather than always firing at minute 0, use the median minute among
+  // sessions that actually landed in the preferred hour. That way a user who
+  // consistently breathes at 07:20 doesn't get nudged at 07:00 on the dot.
+  // We snap to the nearest 5 minutes to avoid distracting precision.
+  const minutesInPreferredHour = last21
+    .map((session) => new Date(session.completedAt))
+    .filter((d) => d.getHours() === preferredHour)
+    .map((d) => d.getMinutes())
+    .sort((a, b) => a - b);
+  let minute = 0;
+  if (minutesInPreferredHour.length > 0) {
+    const mid = Math.floor(minutesInPreferredHour.length / 2);
+    const medianMinute = minutesInPreferredHour[mid];
+    minute = Math.max(0, Math.min(55, Math.round(medianMinute / 5) * 5));
+  }
+  const preferred: ReminderTime = { hour: preferredHour, minute };
   return [preferred];
 }
 

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, TextInput, useWindowDimensions } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, TextInput, useWindowDimensions, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -9,6 +9,7 @@ import { Colors } from '@/constants/colors';
 import { Typography } from '@/constants/typography';
 import { useAppContext } from '@/context/AppContext';
 import { ensureToneFile, TONE_PRESETS } from '@/utils/toneGenerator';
+import { ensureAudioMode } from '@/utils/audioMode';
 import {
   type AmbientSoundscape,
   AMBIENT_SOUND_MODULES,
@@ -16,19 +17,6 @@ import {
   AMBIENT_SOUNDSCAPE_IDS,
   AMBIENT_SOUNDSCAPE_OPTIONS,
 } from '@/constants/ambientSounds';
-
-let audioModeReady = false;
-
-async function ensureAudioMode(): Promise<void> {
-  if (audioModeReady) return;
-  await Audio.setAudioModeAsync({
-    playsInSilentModeIOS: true,
-    staysActiveInBackground: false,
-    shouldDuckAndroid: true,
-    playThroughEarpieceAndroid: false,
-  });
-  audioModeReady = true;
-}
 
 export default function SoundMixerScreen() {
   const router = useRouter();
@@ -62,10 +50,14 @@ export default function SoundMixerScreen() {
     for (const sound of sounds) {
       try {
         await sound.stopAsync();
-      } catch {}
+      } catch (e) {
+        if (__DEV__) console.warn('[lydmikser] stopAsync preview failed', e);
+      }
       try {
         await sound.unloadAsync();
-      } catch {}
+      } catch (e) {
+        if (__DEV__) console.warn('[lydmikser] unloadAsync preview failed', e);
+      }
     }
   }, []);
 
@@ -79,10 +71,14 @@ export default function SoundMixerScreen() {
     toneRef.current = null;
     try {
       await sound.stopAsync();
-    } catch {}
+    } catch (e) {
+      if (__DEV__) console.warn('[lydmikser] stopAsync tone failed', e);
+    }
     try {
       await sound.unloadAsync();
-    } catch {}
+    } catch (e) {
+      if (__DEV__) console.warn('[lydmikser] unloadAsync tone failed', e);
+    }
     setIsTonePreviewing(false);
   }, []);
 
@@ -219,6 +215,9 @@ export default function SoundMixerScreen() {
             }
           }}
           disabled={disableTonePreviewToggle}
+          accessibilityRole="button"
+          accessibilityLabel={isTonePreviewing ? 'Stopp forh\u00e5ndsvisning av tone' : 'Spill av forh\u00e5ndsvisning av tone'}
+          accessibilityState={{ busy: toneBusy, disabled: disableTonePreviewToggle }}
           style={({ pressed }) => [
             styles.previewBtn,
             isTonePreviewing && styles.previewBtnActive,
@@ -244,10 +243,22 @@ export default function SoundMixerScreen() {
         onValueChange={(value) => setToneFrequencyAndRefresh(value)}
       />
       <View style={[styles.toneNudgeRow, isCompactToneLayout && styles.toneNudgeRowCompact]}>
-        <Pressable onPress={() => setToneFrequencyAndRefresh(toneFrequency - 10)} style={styles.mixBtn}>
+        <Pressable
+          onPress={() => setToneFrequencyAndRefresh(toneFrequency - 10)}
+          style={styles.mixBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Reduser frekvens 10 hertz"
+          hitSlop={6}
+        >
           <Text style={styles.mixBtnText}>−10</Text>
         </Pressable>
-        <Pressable onPress={() => setToneFrequencyAndRefresh(toneFrequency + 10)} style={styles.mixBtn}>
+        <Pressable
+          onPress={() => setToneFrequencyAndRefresh(toneFrequency + 10)}
+          style={styles.mixBtn}
+          accessibilityRole="button"
+          accessibilityLabel="\u00d8k frekvens 10 hertz"
+          hitSlop={6}
+        >
           <Text style={styles.mixBtnText}>+10</Text>
         </Pressable>
       </View>
@@ -272,6 +283,10 @@ export default function SoundMixerScreen() {
             <Pressable
               key={`preset-${preset}`}
               onPress={() => setToneFrequencyAndRefresh(preset)}
+              accessibilityRole="radio"
+              accessibilityLabel={`${preset} hertz forh\u00e5ndsvalg`}
+              accessibilityState={{ selected: active }}
+              hitSlop={4}
               style={[
                 styles.tonePresetChip,
                 isCompactToneLayout && styles.tonePresetChipCompact,
@@ -301,6 +316,7 @@ export default function SoundMixerScreen() {
           style={[styles.radio, state.toneEnabled && styles.radioOn]}
           accessibilityRole="switch"
           accessibilityLabel="Bruk tone under økt"
+          accessibilityState={{ checked: state.toneEnabled }}
         />
       </View>
       <Text style={styles.toneHint}>
@@ -319,7 +335,13 @@ export default function SoundMixerScreen() {
       showsVerticalScrollIndicator={false}
     >
       <Animated.View entering={FadeIn.duration(400)}>
-        <Pressable onPress={() => router.back()} style={styles.backButton}>
+        <Pressable
+          onPress={() => router.back()}
+          style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="Tilbake"
+          hitSlop={8}
+        >
           <Text style={styles.backArrow}>‹</Text>
           <Text style={styles.backText}>Tilbake</Text>
         </Pressable>
@@ -348,6 +370,9 @@ export default function SoundMixerScreen() {
             style={[styles.radio, (state.soundMode === 'cues' || state.soundMode === 'mix') && styles.radioOn]}
             accessibilityRole="switch"
             accessibilityLabel="Bruk signaler under økt"
+            accessibilityState={{
+              checked: state.soundMode === 'cues' || state.soundMode === 'mix',
+            }}
           />
         </View>
       </View>
@@ -371,6 +396,9 @@ export default function SoundMixerScreen() {
             style={[styles.radio, (state.soundMode === 'ambient' || state.soundMode === 'mix') && styles.radioOn]}
             accessibilityRole="switch"
             accessibilityLabel="Bruk naturlyder under økt"
+            accessibilityState={{
+              checked: state.soundMode === 'ambient' || state.soundMode === 'mix',
+            }}
           />
         </View>
         <View style={styles.divider} />
@@ -382,6 +410,9 @@ export default function SoundMixerScreen() {
           <Pressable
             onPress={() => setIsPreviewing((prev) => !prev)}
             disabled={disableAmbientPreviewToggle}
+            accessibilityRole="button"
+            accessibilityLabel={isPreviewing ? 'Stopp forh\u00e5ndslytting' : 'Spill av forh\u00e5ndslytting'}
+            accessibilityState={{ busy: previewBusy, disabled: disableAmbientPreviewToggle }}
             style={({ pressed }) => [
               styles.previewBtn,
               isPreviewing && styles.previewBtnActive,
@@ -403,6 +434,10 @@ export default function SoundMixerScreen() {
               <Pressable
                 key={opt.id}
                 onPress={() => setAmbientSolo(opt.id)}
+                accessibilityRole="radio"
+                accessibilityLabel={`Bruk kun ${opt.label}`}
+                accessibilityHint={opt.sub}
+                accessibilityState={{ selected: active }}
                 style={[styles.soundscapeChip, active && styles.soundscapeChipActive]}
               >
                 <Text style={[styles.soundscapeTitle, active && styles.soundscapeTitleActive]}>
@@ -428,10 +463,22 @@ export default function SoundMixerScreen() {
                   <Text style={styles.mixSub}>{pct}%</Text>
                 </View>
                 <View style={styles.mixControls}>
-                  <Pressable onPress={() => setAmbientLevel(opt.id, level - 0.2)} style={styles.mixBtn}>
+                  <Pressable
+                    onPress={() => setAmbientLevel(opt.id, level - 0.2)}
+                    style={styles.mixBtn}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Reduser ${opt.label}`}
+                    hitSlop={6}
+                  >
                     <Text style={styles.mixBtnText}>−</Text>
                   </Pressable>
-                  <Pressable onPress={() => setAmbientLevel(opt.id, level + 0.2)} style={styles.mixBtn}>
+                  <Pressable
+                    onPress={() => setAmbientLevel(opt.id, level + 0.2)}
+                    style={styles.mixBtn}
+                    accessibilityRole="button"
+                    accessibilityLabel={`\u00d8k ${opt.label}`}
+                    hitSlop={6}
+                  >
                     <Text style={styles.mixBtnText}>+</Text>
                   </Pressable>
                 </View>
@@ -455,22 +502,51 @@ export default function SoundMixerScreen() {
               saveAmbientPreset(mixNameDraft.trim() || undefined);
               setMixNameDraft('');
             }}
+            accessibilityRole="button"
+            accessibilityLabel="Lagre n\u00e5v\u00e6rende miks"
             style={styles.saveMixBtn}
           >
             <Text style={styles.saveMixBtnText}>Lagre nåværende miks</Text>
           </Pressable>
           {state.ambientMixPresets.length === 0 ? (
-            <Text style={styles.mixEmpty}>Ingen lagrede mikser ennå.</Text>
+            <Text style={styles.mixEmpty}>
+              Ingen lagrede mikser ennå. Juster volumene over og trykk «Lagre nåværende miks» for å ta vare på den.
+            </Text>
           ) : (
             state.ambientMixPresets.map((preset) => (
               <View key={preset.id} style={styles.presetMixRow}>
                 <View style={styles.presetMixApply}>
                   <Text style={styles.presetMixName}>{preset.name}</Text>
                 </View>
-                <Pressable onPress={() => applyAmbientPreset(preset.id)} style={styles.presetMixUse}>
+                <Pressable
+                  onPress={() => applyAmbientPreset(preset.id)}
+                  style={styles.presetMixUse}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Bruk miks ${preset.name}`}
+                  hitSlop={6}
+                >
                   <Text style={styles.presetMixUseText}>Bruk</Text>
                 </Pressable>
-                <Pressable onPress={() => deleteAmbientPreset(preset.id)} style={styles.presetMixDelete}>
+                <Pressable
+                  onPress={() =>
+                    Alert.alert(
+                      'Slette miks?',
+                      `${preset.name} blir fjernet permanent.`,
+                      [
+                        { text: 'Avbryt', style: 'cancel' },
+                        {
+                          text: 'Slett',
+                          style: 'destructive',
+                          onPress: () => deleteAmbientPreset(preset.id),
+                        },
+                      ]
+                    )
+                  }
+                  style={styles.presetMixDelete}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Slett miks ${preset.name}`}
+                  hitSlop={6}
+                >
                   <Text style={styles.presetMixDeleteText}>Slett</Text>
                 </Pressable>
               </View>
@@ -488,7 +564,7 @@ export default function SoundMixerScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.darkBase },
+  container: { flex: 1, backgroundColor: Colors.background },
   content: { paddingHorizontal: 24 },
   backButton: {
     flexDirection: 'row',

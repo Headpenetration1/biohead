@@ -74,9 +74,16 @@ export default function BreathingCircle({
     <View
       style={styles.container}
       accessible
-      accessibilityRole="text"
+      // "progressbar" conveys "this is something that changes over time"
+      // better than "text" for a running timer with a progress ring.
+      accessibilityRole="progressbar"
       accessibilityLiveRegion="polite"
       accessibilityLabel={accessibilityLabel}
+      accessibilityValue={{
+        min: 0,
+        max: 100,
+        now: Math.round(Math.min(1, Math.max(0, totalProgress)) * 100),
+      }}
     >
       {/* Ytre glow */}
       <Animated.View

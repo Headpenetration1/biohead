@@ -14,6 +14,13 @@ import * as LucideIcons from 'lucide-react-native';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
+// Cast once at module scope instead of on every render; `lucide-react-native`
+// exports an object of named icon components that we look up by string key.
+const LucideMap = LucideIcons as unknown as Record<
+  string,
+  React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>
+>;
+
 interface ExerciseCardProps {
   exercise: Exercise;
   index: number;
@@ -53,8 +60,15 @@ export default function ExerciseCard({
     onPress();
   }, [light, onPress]);
 
-  const LucideMap = LucideIcons as unknown as Record<string, React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>>;
   const IconComponent = LucideMap[exercise.icon] ?? LucideMap['Circle'];
+
+  const cardA11yLabel = [
+    exercise.title,
+    exercise.subtitle,
+    isFavorite ? 'favoritt' : undefined,
+  ]
+    .filter(Boolean)
+    .join(', ');
 
   return (
     <AnimatedPressable
@@ -62,6 +76,9 @@ export default function ExerciseCard({
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      accessibilityRole="button"
+      accessibilityLabel={cardA11yLabel}
+      accessibilityHint="Åpner øvelsen"
       style={[
         styles.card,
         animatedStyle,
@@ -113,7 +130,7 @@ const styles = StyleSheet.create({
     gap: 16,
     paddingVertical: 20,
     paddingHorizontal: 22,
-    backgroundColor: Colors.darkBaseCard,
+    backgroundColor: Colors.cardBackground,
     borderRadius: 24,
     borderWidth: 1,
     shadowOffset: { width: 0, height: 4 },

@@ -65,7 +65,7 @@ export default function OnboardingScreen() {
 
       {step === 1 && (
         <Animated.View entering={FadeInDown.duration(450)} style={styles.section}>
-          <Text style={styles.kicker}>Steg 2 av 4</Text>
+          <Text style={styles.kicker}>Steg 1 av 3</Text>
           <Text style={styles.title}>Hva trenger du mest?</Text>
           <Text style={styles.body}>Vi tilpasser forsiden etter valget ditt (du kan endre det senere).</Text>
           <View style={styles.goalList}>
@@ -94,7 +94,7 @@ export default function OnboardingScreen() {
 
       {step === 2 && (
         <Animated.View entering={FadeInDown.duration(450)} style={styles.section}>
-          <Text style={styles.kicker}>Steg 3 av 4</Text>
+          <Text style={styles.kicker}>Steg 2 av 3</Text>
           <Text style={styles.title}>Rask stress-sjekk</Text>
           <Text style={styles.body}>Dette hjelper oss foresla rett oppstartsplan for deg.</Text>
           <View style={styles.quizGroup}>
@@ -147,7 +147,7 @@ export default function OnboardingScreen() {
 
       {step === 3 && (
         <Animated.View entering={FadeInDown.duration(450)} style={styles.section}>
-          <Text style={styles.kicker}>Steg 4 av 4</Text>
+          <Text style={styles.kicker}>Steg 3 av 3</Text>
           <Text style={styles.title}>Du er klar</Text>
           <Text style={styles.body}>
             Startforslag: <Text style={styles.recoInline}>{finalGoal}</Text> + program{' '}
@@ -170,7 +170,7 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Colors.darkBase,
+    backgroundColor: Colors.background,
     paddingHorizontal: 24,
     justifyContent: 'center',
   },

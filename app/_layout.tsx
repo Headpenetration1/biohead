@@ -47,7 +47,7 @@ function RootLayout() {
         <Stack
           screenOptions={{
             headerShown: false,
-            contentStyle: { backgroundColor: Colors.darkBase },
+            contentStyle: { backgroundColor: Colors.background },
             animation: 'fade',
           }}
         >

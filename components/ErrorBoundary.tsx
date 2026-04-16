@@ -52,10 +52,20 @@ export default class ErrorBoundary extends Component<Props, State> {
           <Text style={styles.body}>
             Appen opplevde en feil. Prøv igjen, eller kontakt oss om det fortsetter.
           </Text>
-          <Pressable onPress={this.handleReset} style={styles.button}>
+          <Pressable
+            onPress={this.handleReset}
+            style={styles.button}
+            accessibilityRole="button"
+            accessibilityLabel="Pr\u00f8v \u00e5 starte appen p\u00e5 nytt"
+          >
             <Text style={styles.buttonText}>Prøv igjen</Text>
           </Pressable>
-          <Pressable onPress={this.handleSupport} style={styles.link}>
+          <Pressable
+            onPress={this.handleSupport}
+            style={styles.link}
+            accessibilityRole="link"
+            accessibilityLabel="Send e-post til support"
+          >
             <Text style={styles.linkText}>Kontakt support</Text>
           </Pressable>
         </View>
@@ -69,7 +79,7 @@ export default class ErrorBoundary extends Component<Props, State> {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.darkBase,
+    backgroundColor: Colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 32,
@@ -108,7 +118,7 @@ const styles = StyleSheet.create({
   buttonText: {
     fontFamily: Typography.fontFamily.bold,
     fontSize: Typography.sizes.base,
-    color: Colors.darkBase,
+    color: Colors.background,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },

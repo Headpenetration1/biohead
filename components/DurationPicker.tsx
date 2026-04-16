@@ -31,6 +31,13 @@ export default function DurationPicker({
               selection();
               onChange(d);
             }}
+            accessibilityRole="radio"
+            accessibilityLabel={
+              d >= 60
+                ? `${d / 60} minutt${d >= 120 ? 'er' : ''}`
+                : `${d} sekunder`
+            }
+            accessibilityState={{ selected: active }}
             style={[
               styles.option,
               active && {

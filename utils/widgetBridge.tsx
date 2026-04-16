@@ -11,6 +11,11 @@ function exerciseTitle(id: string | undefined): string | undefined {
 
 let iosWidget: { updateSnapshot: (props: WidgetSnapshot) => void } | null = null;
 let androidRegistered = false;
+// The Android task handler is registered exactly once, so it must read the
+// latest snapshot via this module-level ref instead of capturing one in
+// closure. Otherwise background widget renders get stuck on whatever snapshot
+// was current the very first time the user opened the app.
+let latestAndroidSnapshot: WidgetSnapshot | null = null;
 const isExpoGo =
   Constants.appOwnership === 'expo' ||
   String(Constants.executionEnvironment).toLowerCase() === 'storeclient';
@@ -49,12 +54,15 @@ function setupIosWidget(): void {
 
 function setupAndroidWidget(snapshot: WidgetSnapshot): void {
   if (Platform.OS !== 'android') return;
+  latestAndroidSnapshot = snapshot;
   try {
     const widget = require('react-native-android-widget') as typeof import('react-native-android-widget');
-    const deepLink = getDeepLink(snapshot);
-    const recommendedLabel = exerciseTitle(snapshot.recommendedExerciseId);
+
     if (!androidRegistered) {
       widget.registerWidgetTaskHandler(async ({ renderWidget }) => {
+        const current = latestAndroidSnapshot ?? snapshot;
+        const deepLink = getDeepLink(current);
+        const recommendedLabel = exerciseTitle(current.recommendedExerciseId);
         renderWidget(
           <widget.FlexWidget
             style={{
@@ -80,6 +88,9 @@ function setupAndroidWidget(snapshot: WidgetSnapshot): void {
       });
       androidRegistered = true;
     }
+
+    const deepLink = getDeepLink(snapshot);
+    const recommendedLabel = exerciseTitle(snapshot.recommendedExerciseId);
 
     void widget.requestWidgetUpdate({
       widgetName: 'BioheadQuickWidget',

@@ -4,15 +4,19 @@ En minimalistisk mobilapp for guidede pusteøvelser og mentale «reset»-økter,
 
 ## Funksjoner
 
-- **Flere pusteøvelser** (ro, fokus, energi, søvn, balanse, stressned) med animert sirkel
+- **Flere pusteøvelser** (ro, fokus, energi, søvn, balanse, stressned m.fl.) med animert sirkel og faseindikator
 - **Varighet** 30–120 s, med **husket varighet per øvelse**
-- **Streak** og **økthistorikk** (kun lokalt på enheten)
-- **Onboarding** med valg av hovedmål (påvirker rekkefølge på forsiden)
+- **Programmer**: flerdagers guidede opplegg med fremdriftstelling
+- **Streak**, **økthistorikk** og **stresstrend** (kun lokalt på enheten)
+- **Onboarding** med mål (ro / fokus / energi) som påvirker forside-anbefaling
 - **Favoritter**: egen seksjon på forsiden + hjerte på kort og øvelsesside
-- **Innstillinger**: haptikk, redusert bevegelse, **lyd** (av / korte signaler / ambient loop), **daglig påminnelse** (lokalt varsel), nullstill data
-- **Tilgjengelighet**: VoiceOver-label på pustesirkelen under økt
+- **Lydmikser**: signaler ved fasebytte, ambient-natur (vind / fugler / skog / regn / bølger) med egne volumnivåer og lagrede mikser, valgfri tonegenerator
+- **Innstillinger**: haptikk, redusert bevegelse, daglige påminnelser (med «hopp over i dag», utsett 30 min, adaptiv tid og stille helg), lagrede øktoppsett, nullstill data
+- **Widgets**: iOS og Android hjemskjerm-widget for hurtigstart av anbefalt øvelse
+- **Tilgjengelighet**: skjermleser-labels, live-regioner på pustesirkelen, `hitSlop` og `accessibilityState` på interaktive elementer
 - **Feilrapportering**: **Sentry** (valgfritt, via `EXPO_PUBLIC_SENTRY_DSN`) + lokal lagring + support-lenke på feilskjerm
 - **Apple Helse (iOS)**: valgfri logging av **mindful minutes** etter fullførte økter (krever bygget app med HealthKit, ikke Expo Go)
+- **Automatisk pause**: aktiv økt pauses når appen går i bakgrunn slik at lyd/visuell tilstand ikke driver fra hverandre
 
 ## Tech stack
 
@@ -38,7 +42,10 @@ unset CI && npx expo start
 
 ```bash
 npm test
+npx tsc --noEmit
 ```
+
+Testdekningen inkluderer reducer-logikk, streak-regler, adaptive påminnelser, historikk-insights, lagrings-serialisering, fasebereging og lydpolicy.
 
 ### Sentry (valgfritt)
 
@@ -87,10 +94,12 @@ App-skjema: `biohead` (se [app.json](app.json)). Eksempel: `biohead://exercise/c
 biohead/
 ├── app/                    # Skjermer (expo-router)
 │   ├── _layout.tsx
-│   ├── index.tsx
+│   ├── index.tsx           # forside / anbefaling / favoritter
 │   ├── onboarding.tsx
 │   ├── settings.tsx
-│   ├── history.tsx
+│   ├── lydmikser.tsx       # lydmiksing, tonegenerator
+│   ├── programs.tsx        # guidede programmer
+│   ├── history.tsx         # historikk + insights + eksport
 │   └── exercise/
 │       ├── [id].tsx
 │       └── session.tsx

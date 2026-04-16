@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet, Image, Pressable, Share, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Image, Pressable, Share, Alert, ActivityIndicator } from 'react-native';
 import { useRouter, Redirect, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -152,7 +152,16 @@ export default function HomeScreen() {
   const mainCardIndexOffset = favoriteExercises.length;
 
   if (state.isLoading) {
-    return <View style={[styles.container, styles.loading]} />;
+    return (
+      <View
+        style={[styles.container, styles.loading]}
+        accessibilityRole="progressbar"
+        accessibilityLabel="Laster Biohead"
+      >
+        <ActivityIndicator color={Colors.greenAccent} />
+        <Text style={styles.loadingText}>Laster …</Text>
+      </View>
+    );
   }
 
   if (!state.hasCompletedOnboarding) {
@@ -225,7 +234,7 @@ export default function HomeScreen() {
           <Animated.View entering={FadeInDown.delay(155).duration(500).springify()} style={styles.todayPlanWrap}>
             <View style={styles.todayPlanCard}>
               <View style={styles.todayPlanHeader}>
-                <Text style={styles.todayPlanKicker}>{isKickstartProgram ? 'Today plan' : 'Dagens plan'}</Text>
+                <Text style={styles.todayPlanKicker}>Dagens plan</Text>
                 <Text style={styles.todayPlanBadge}>
                   Dag {state.activeProgram.currentDay}/{activeProgram.days.length}
                   {isKickstartProgram ? ' kickstart' : ''}
@@ -313,6 +322,7 @@ export default function HomeScreen() {
                     style={[styles.stressChip, active && styles.stressChipActive]}
                     accessibilityRole="button"
                     accessibilityLabel={`Stressnivå ${level} av 5`}
+                    hitSlop={8}
                   >
                     <Text style={[styles.stressChipText, active && styles.stressChipTextActive]}>{level}</Text>
                   </Pressable>
@@ -419,47 +429,14 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
-        {activeProgram && state.activeProgram && activeProgramDay && !isKickstartProgram ? (
-          <Animated.View entering={FadeInDown.delay(230).duration(500).springify()} style={styles.programWrap}>
-            <View style={styles.programCard}>
-              <View style={styles.programHeader}>
-                <Text style={styles.programTitle}>{activeProgram.title}</Text>
-                <Text style={styles.programBadge}>
-                  Dag {state.activeProgram.currentDay}/{activeProgram.days.length}
-                </Text>
-              </View>
-              <Text style={styles.programSub}>
-                Dagens steg: {activeProgramDay.label} · {activeProgramDay.duration}s
-              </Text>
-              <View style={styles.programActions}>
-                <Pressable
-                  onPress={() =>
-                    router.push({
-                      pathname: '/exercise/[id]',
-                      params: { id: activeProgramDay.exerciseId },
-                    })
-                  }
-                  style={styles.programBtn}
-                >
-                  <Text style={styles.programBtnText}>Åpne dagens øvelse</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => router.push('/programs' as Href)}
-                  style={styles.programBtnSecondary}
-                >
-                  <Text style={styles.programBtnSecondaryText}>Bytt program</Text>
-                </Pressable>
-              </View>
-            </View>
-          </Animated.View>
-        ) : (
+        {!activeProgram || !state.activeProgram || !activeProgramDay ? (
           <Animated.View entering={FadeInDown.delay(230).duration(500).springify()} style={styles.programWrap}>
             <Pressable onPress={() => router.push('/programs' as Href)} style={styles.programCard}>
               <Text style={styles.programTitle}>Guidede programmer</Text>
               <Text style={styles.programSub}>Start et program og bygg vane dag for dag.</Text>
             </Pressable>
           </Animated.View>
-        )}
+        ) : null}
 
         {favoriteExercises.length > 0 ? (
           <>
@@ -543,10 +520,18 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.darkBase,
+    backgroundColor: Colors.background,
   },
   loading: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontFamily: Typography.fontFamily.medium,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textSecondary,
   },
   content: {
     paddingHorizontal: 24,

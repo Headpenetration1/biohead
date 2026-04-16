@@ -4,12 +4,17 @@ import * as Haptics from 'expo-haptics';
 
 const isHapticsSupported = Platform.OS !== 'web';
 
+// Swallow both synchronous throws AND promise rejections. Haptics is a purely
+// cosmetic API – we never want a dropped rumble to surface as an unhandled
+// rejection in Sentry or Metro's red screen.
 function safeHaptic(fn: () => Promise<void>) {
   if (!isHapticsSupported) return;
   try {
-    void fn();
+    fn().catch(() => {
+      /* ignore rejection */
+    });
   } catch {
-    /* ignore */
+    /* ignore synchronous throw */
   }
 }
 

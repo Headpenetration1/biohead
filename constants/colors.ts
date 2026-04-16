@@ -9,13 +9,6 @@ export const Colors = {
   deepBlue: '#1e495d',
   lightBeige: '#FFF9ED',
 
-  /** @deprecated Use `background` instead. */
-  darkBase: '#FFF9ED',
-  /** @deprecated Use `backgroundAlt` instead. */
-  darkBaseLighter: '#FFF9ED',
-  /** @deprecated Use `cardBackground` instead. */
-  darkBaseCard: 'rgba(14, 32, 37, 0.04)',
-
   // Tekst
   textPrimary: '#0e2025',
   textSecondary: 'rgba(14, 32, 37, 0.75)',

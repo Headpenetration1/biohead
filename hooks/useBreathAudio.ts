@@ -3,30 +3,23 @@ import { Audio, type AVPlaybackStatus } from 'expo-av';
 import type { SoundMode } from '@/utils/storage';
 import type { BreathingPhase } from '@/constants/exercises';
 import { ensureToneFile } from '@/utils/toneGenerator';
+import { ensureAudioMode } from '@/utils/audioMode';
 import {
   type AmbientMix,
   type AmbientSoundscape,
   AMBIENT_SOUND_MODULES,
   AMBIENT_SOUND_VOLUMES,
-  AMBIENT_SOUNDSCAPE_IDS,
 } from '@/constants/ambientSounds';
+import {
+  activeAmbientTracks,
+  areCuesEnabled,
+  effectiveCueVolume,
+  isAmbientEnabled,
+} from '@/utils/audioPolicy';
 
 const inhaleCue = require('@/assets/sounds/cue_inhale.wav');
 const exhaleCue = require('@/assets/sounds/cue_exhale.wav');
 const holdCue = require('@/assets/sounds/cue_hold.wav');
-
-let audioModeReady = false;
-
-async function ensureAudioMode(): Promise<void> {
-  if (audioModeReady) return;
-  await Audio.setAudioModeAsync({
-    playsInSilentModeIOS: true,
-    staysActiveInBackground: false,
-    shouldDuckAndroid: true,
-    playThroughEarpieceAndroid: false,
-  });
-  audioModeReady = true;
-}
 
 export function useBreathAudio(
   soundMode: SoundMode,
@@ -40,8 +33,8 @@ export function useBreathAudio(
   toneFrequency = 157,
   toneVolume = 0.5
 ) {
-  const ambientEnabled = soundMode === 'ambient' || soundMode === 'mix';
-  const cuesEnabled = (soundMode === 'cues' || soundMode === 'mix') && cueVolume > 0.01;
+  const ambientEnabled = isAmbientEnabled(soundMode);
+  const cuesEnabled = areCuesEnabled(soundMode, cueVolume);
   const ambientRefs = useRef<Partial<Record<AmbientSoundscape, Audio.Sound>>>({});
   const toneRef = useRef<Audio.Sound | null>(null);
   const cueRef = useRef<Audio.Sound | null>(null);
@@ -105,9 +98,7 @@ export function useBreathAudio(
       await unloadAmbient();
       if (cancelled) return;
       try {
-        const activeMix = AMBIENT_SOUNDSCAPE_IDS.filter(
-          (id) => (ambientMix[id] ?? 0) > 0.01
-        );
+        const activeMix = activeAmbientTracks(ambientMix);
         for (const id of activeMix) {
           const module = AMBIENT_SOUND_MODULES[id];
           const volume = AMBIENT_SOUND_VOLUMES[id] * (ambientMix[id] ?? 0);
@@ -182,7 +173,18 @@ export function useBreathAudio(
     void toneRef.current.setVolumeAsync(toneVolume).catch(() => {});
   }, [toneVolume, toneEnabled]);
 
-  // Phase cues
+  // Phase cues.
+  //
+  // `createAsync` + `playAsync` are async, so a fast phase change can leave a
+  // previous cue still loading when the next one starts. We guard against that
+  // with two mechanisms:
+  //   1. A monotonically increasing generation counter. Any async work that
+  //      finishes after a newer cue has been scheduled unloads itself instead
+  //      of taking over `cueRef`.
+  //   2. The effect cleanup sets `cancelled = true` for the in-flight chain,
+  //      so rerenders (e.g. session toggled off mid-flight) don't leave an
+  //      orphan Sound behind.
+  const cueGenerationRef = useRef(0);
   useEffect(() => {
     if (!cuesEnabled || !isSessionActive || isPaused) {
       lastPhaseRef.current = currentPhase;
@@ -204,26 +206,38 @@ export function useBreathAudio(
           ? exhaleCue
           : holdCue;
 
+    const generation = ++cueGenerationRef.current;
+    let cancelled = false;
+
     (async () => {
-      await ensureAudioMode();
-      await unloadCue();
       try {
-        const effectiveCueVolume =
-          soundMode === 'mix' ? Math.min(1, Math.max(0.05, cueVolume) * 1.2) : cueVolume;
-        const { sound } = await Audio.Sound.createAsync(source, { volume: effectiveCueVolume });
+        await ensureAudioMode();
+        if (cancelled || generation !== cueGenerationRef.current) return;
+        await unloadCue();
+        if (cancelled || generation !== cueGenerationRef.current) return;
+        const volume = effectiveCueVolume(soundMode, cueVolume);
+        const { sound } = await Audio.Sound.createAsync(source, { volume });
+        if (cancelled || generation !== cueGenerationRef.current) {
+          void sound.unloadAsync().catch(() => {});
+          return;
+        }
         cueRef.current = sound;
         sound.setOnPlaybackStatusUpdate((status) => {
           if (status.isLoaded && status.didJustFinish) {
-            void sound.unloadAsync();
+            void sound.unloadAsync().catch(() => {});
             if (cueRef.current === sound) cueRef.current = null;
           }
         });
         await sound.playAsync();
       } catch (e) {
-        console.warn('Cue audio error', e);
+        if (__DEV__) console.warn('Cue audio error', e);
       }
     })();
-  }, [cuesEnabled, isSessionActive, isPaused, currentPhase, unloadCue, cueVolume]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cuesEnabled, isSessionActive, isPaused, currentPhase, unloadCue, cueVolume, soundMode]);
 
   // Cleanup on unmount
   useEffect(() => {

@@ -26,7 +26,8 @@
       "buildNumber": "1",
       "infoPlist": {
         "NSHealthShareUsageDescription": "Biohead kan bruke Helse for å synkronisere mindful minutes når du velger det.",
-        "NSHealthUpdateUsageDescription": "Biohead lagrer mindful minutes i Apple Helse når du fullfører en pusteøkt (valgfritt)."
+        "NSHealthUpdateUsageDescription": "Biohead lagrer mindful minutes i Apple Helse når du fullfører en pusteøkt (valgfritt).",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "entitlements": {
         "com.apple.developer.healthkit": true

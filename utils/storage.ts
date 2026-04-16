@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { reportError } from '@/utils/logger';
 import {
   type AmbientMix,
   type AmbientSoundscape,
@@ -419,7 +420,7 @@ export async function saveAppData(data: AppData): Promise<void> {
   try {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch (e) {
-    console.warn('Failed to save app data:', e);
+    reportError('Failed to save app data', e);
   }
 }
 
@@ -427,6 +428,6 @@ export async function clearAppData(): Promise<void> {
   try {
     await AsyncStorage.removeItem(STORAGE_KEY);
   } catch (e) {
-    console.warn('Failed to clear app data:', e);
+    reportError('Failed to clear app data', e);
   }
 }

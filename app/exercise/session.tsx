@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, Pressable, Modal, StyleSheet, BackHandler } from 'react-native';
+import { View, Text, Pressable, Modal, StyleSheet, BackHandler, AppState } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useKeepAwake } from 'expo-keep-awake';
@@ -46,6 +46,10 @@ export default function SessionScreen() {
   const [showQuitModal, setShowQuitModal] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [effectScore, setEffectScore] = useState<number | null>(null);
+  // Synchronous guard to make sure a completed session is logged exactly once,
+  // even if the effect below runs twice (e.g. React Strict Mode) before
+  // `setIsComplete(true)` has flushed.
+  const hasLoggedCompletionRef = useRef(false);
 
   const engine = useBreathingEngine({
     pattern: exercise?.pattern ?? [],
@@ -68,12 +72,18 @@ export default function SessionScreen() {
     state.toneVolume
   );
 
+  // Kick the breathing engine off once when the screen mounts with a valid
+  // exercise. We guard with a ref instead of leaving the dep-array empty, so
+  // re-renders (unstable engine reference, Strict Mode double-mount) cannot
+  // accidentally start the engine twice or leave it stuck.
+  const hasStartedRef = useRef(false);
   useEffect(() => {
-    if (exercise && !engine.isActive && !isComplete) {
-      const timer = setTimeout(() => engine.start(), 500);
-      return () => clearTimeout(timer);
-    }
-  }, []);
+    if (hasStartedRef.current) return;
+    if (!exercise || isComplete) return;
+    hasStartedRef.current = true;
+    const timer = setTimeout(() => engine.start(), 500);
+    return () => clearTimeout(timer);
+  }, [exercise, engine, isComplete]);
 
   const prevPhase = useRef(engine.currentPhase);
   useEffect(() => {
@@ -97,8 +107,24 @@ export default function SessionScreen() {
     return () => handler.remove();
   }, [isComplete]);
 
+  // Auto-pause when the app is backgrounded. Without this, `setInterval` in
+  // the engine keeps ticking unreliably on iOS/Android (throttled by the OS)
+  // while audio gets muted — the user returns to find the session far ahead
+  // of where the audio / visual state suggests. We only auto-pause; resuming
+  // is intentionally manual so the user chooses when to continue.
   useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next !== 'active' && engine.isActive && !engine.isPaused && !isComplete) {
+        engine.pause();
+      }
+    });
+    return () => sub.remove();
+  }, [engine, isComplete]);
+
+  useEffect(() => {
+    if (hasLoggedCompletionRef.current) return;
     if (!engine.isActive && engine.totalProgress >= 1 && !isComplete) {
+      hasLoggedCompletionRef.current = true;
       setIsComplete(true);
       success();
       if (exercise) {
@@ -139,7 +165,17 @@ export default function SessionScreen() {
     router.back();
   }, [engine, router]);
 
-  if (!exercise) return null;
+  if (!exercise) {
+    return (
+      <View style={[styles.container, styles.missingRoot, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }]}>
+        <Text style={styles.missingTitle}>Fant ikke øvelsen</Text>
+        <Text style={styles.missingBody}>
+          Økten kunne ikke starte fordi øvelsen ikke finnes. Prøv å starte på nytt fra forsiden.
+        </Text>
+        <HapticButton title="Til forsiden" onPress={() => router.replace('/')} />
+      </View>
+    );
+  }
 
   const a11yBreathLabel = `${engine.isPaused ? 'Pause' : engine.currentLabel}, ${formatTime(engine.remainingSeconds)} gjenstår av økten`;
 
@@ -174,8 +210,8 @@ export default function SessionScreen() {
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(650).duration(500).springify()} style={styles.effectWrap}>
-          <Text style={styles.effectTitle}>Hvordan føles du nå?</Text>
-          <Text style={styles.effectSub}>Effekt-score etter økten (1-5)</Text>
+          <Text style={styles.effectTitle}>Hvor stressa føler du deg nå?</Text>
+          <Text style={styles.effectSub}>1 = rolig, 5 = veldig stressa</Text>
           <View style={styles.effectRow}>
             {[1, 2, 3, 4, 5].map((score) => {
               const active = effectScore === score;
@@ -188,7 +224,8 @@ export default function SessionScreen() {
                   }}
                   style={[styles.effectChip, active && styles.effectChipActive]}
                   accessibilityRole="button"
-                  accessibilityLabel={`Sett effekt-score ${score} av 5`}
+                  accessibilityLabel={`Sett stressnivå etter økt til ${score} av 5`}
+                  hitSlop={8}
                 >
                   <Text style={[styles.effectChipText, active && styles.effectChipTextActive]}>{score}</Text>
                 </Pressable>
@@ -211,7 +248,12 @@ export default function SessionScreen() {
             title="Gjør en til →"
             variant="secondary"
             onPress={() => {
+              // Reset one-shot guards so the follow-up round is logged like
+              // any other session (streak, history, widget, HealthKit).
+              hasLoggedCompletionRef.current = false;
+              hasStartedRef.current = false;
               setIsComplete(false);
+              setEffectScore(null);
               engine.start();
             }}
             style={{ width: '100%' }}
@@ -300,10 +342,17 @@ export default function SessionScreen() {
               <Pressable
                 onPress={() => setShowQuitModal(false)}
                 style={styles.modalButtonSecondary}
+                accessibilityRole="button"
+                accessibilityLabel="Fortsett økten"
               >
                 <Text style={styles.modalButtonSecondaryText}>Fortsett</Text>
               </Pressable>
-              <Pressable onPress={handleQuit} style={styles.modalButtonDestructive}>
+              <Pressable
+                onPress={handleQuit}
+                style={styles.modalButtonDestructive}
+                accessibilityRole="button"
+                accessibilityLabel="Avslutt økten uten å lagre fremdrift"
+              >
                 <Text style={styles.modalButtonDestructiveText}>Avslutt</Text>
               </Pressable>
             </View>
@@ -317,9 +366,27 @@ export default function SessionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.darkBase,
+    backgroundColor: Colors.background,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  missingRoot: {
+    paddingHorizontal: 24,
+    gap: 12,
+  },
+  missingTitle: {
+    fontFamily: Typography.fontFamily.bold,
+    fontSize: Typography.sizes['2xl'],
+    color: Colors.textPrimary,
+    textAlign: 'center',
+  },
+  missingBody: {
+    fontFamily: Typography.fontFamily.regular,
+    fontSize: Typography.sizes.base,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 12,
   },
   bgGlow: {
     position: 'absolute',

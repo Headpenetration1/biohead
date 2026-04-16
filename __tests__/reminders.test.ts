@@ -32,7 +32,25 @@ describe('adaptive reminder times', () => {
       completedAt: `2026-03-${10 + idx}T18:12:00.000Z`,
     }));
     const expectedHour = new Date(sessions[0].completedAt).getHours();
+    const expectedMinute =
+      Math.max(0, Math.min(55, Math.round(new Date(sessions[0].completedAt).getMinutes() / 5) * 5));
     const result = getAdaptiveReminderTimes(sessions, [{ hour: 9, minute: 0 }]);
-    expect(result[0]).toEqual({ hour: expectedHour, minute: 0 });
+    expect(result[0]).toEqual({ hour: expectedHour, minute: expectedMinute });
+  });
+
+  it('snaps median minute to the nearest 5-minute mark', () => {
+    // Six sessions at HH:22/23/24 – median is 23, which rounds to 25.
+    const hour = new Date('2026-03-10T07:22:00').getHours();
+    const sessions: SessionRecord[] = [22, 23, 24, 22, 23, 24].map((min, idx) => ({
+      id: String(idx),
+      exerciseId: 'calm',
+      duration: 60,
+      // Use a local-time string so Date.getMinutes() reflects `min` regardless
+      // of the test runner's timezone.
+      completedAt: new Date(2026, 2, 10 + idx, hour, min, 0).toISOString(),
+    }));
+    const result = getAdaptiveReminderTimes(sessions, [{ hour: 9, minute: 0 }]);
+    expect(result[0].hour).toBe(hour);
+    expect(result[0].minute).toBe(25);
   });
 });

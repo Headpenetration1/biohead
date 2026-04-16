@@ -10,6 +10,7 @@ import {
   SharedValue,
 } from 'react-native-reanimated';
 import type { BreathingPattern, BreathingPhase } from '@/constants/exercises';
+import { computePhaseSnapshot } from '@/utils/breathPhase';
 
 interface UseBreathingEngineProps {
   pattern: BreathingPattern[];
@@ -62,31 +63,10 @@ export function useBreathingEngine({
   const glowOpacity = useSharedValue(0.2);
   const ringProgress = useSharedValue(0);
 
-  // Beregn nåværende fase basert på elapsed time
+  // Delegate to a pure helper so phase math can be unit tested without React.
   const computePhase = useCallback(
-    (currentElapsed: number) => {
-      const posInCycle = currentElapsed % cycleDuration;
-      let accumulated = 0;
-      let stepIndex = 0;
-
-      for (const step of pattern) {
-        if (posInCycle < accumulated + step.duration) {
-          const phaseElapsed = posInCycle - accumulated;
-          const progress = phaseElapsed / step.duration;
-          return { phase: step.phase, label: step.label, progress, stepIndex };
-        }
-        accumulated += step.duration;
-        stepIndex += 1;
-      }
-
-      return {
-        phase: pattern[0].phase,
-        label: pattern[0].label,
-        progress: 0,
-        stepIndex: 0,
-      };
-    },
-    [pattern, cycleDuration]
+    (currentElapsed: number) => computePhaseSnapshot(pattern, currentElapsed),
+    [pattern]
   );
 
   // Animér pustesirkelen basert på fase

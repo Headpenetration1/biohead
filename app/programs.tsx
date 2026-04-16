@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import React, { useCallback } from 'react';
+import { View, Text, ScrollView, Pressable, StyleSheet, Alert } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
@@ -13,6 +13,41 @@ export default function ProgramsScreen() {
   const insets = useSafeAreaInsets();
   const { state, startProgram } = useAppContext();
 
+  const handleStart = useCallback(
+    (programId: string, programTitle: string) => {
+      const current = state.activeProgram;
+      const isDifferent = current && current.id !== programId;
+      const isRestart = current && current.id === programId;
+      // Only interrupt the user when there's actually something to lose –
+      // either they'd overwrite a different program or reset their progress
+      // in the current one.
+      if (isDifferent || isRestart) {
+        const progressLabel = isDifferent
+          ? `Du har allerede et aktivt program. ${programTitle} vil erstatte det og tilbakestille fremdriften.`
+          : `Dette nullstiller fremdriften din i ${programTitle}.`;
+        Alert.alert(
+          isDifferent ? 'Bytt program?' : 'Start på nytt?',
+          progressLabel,
+          [
+            { text: 'Avbryt', style: 'cancel' },
+            {
+              text: isDifferent ? 'Bytt' : 'Start på nytt',
+              style: 'destructive',
+              onPress: () => {
+                startProgram(programId as never);
+                router.replace('/' as Href);
+              },
+            },
+          ]
+        );
+        return;
+      }
+      startProgram(programId as never);
+      router.replace('/' as Href);
+    },
+    [state.activeProgram, startProgram, router]
+  );
+
   return (
     <ScrollView
       style={styles.container}
@@ -22,7 +57,13 @@ export default function ProgramsScreen() {
       ]}
       showsVerticalScrollIndicator={false}
     >
-      <Pressable onPress={() => router.back()} style={styles.backButton}>
+      <Pressable
+        onPress={() => router.back()}
+        style={styles.backButton}
+        accessibilityRole="button"
+        accessibilityLabel="Tilbake"
+        hitSlop={8}
+      >
         <Text style={styles.backArrow}>‹</Text>
         <Text style={styles.backText}>Tilbake</Text>
       </Pressable>
@@ -50,13 +91,13 @@ export default function ProgramsScreen() {
                 Dag {day.day}: {ex?.title ?? day.exerciseId} · {day.duration}s · {day.label}
               </Text>
               <View style={styles.row}>
-                <Text style={styles.progress}>Progress: {progress}</Text>
+                <Text style={styles.progress}>Fremdrift: {progress}</Text>
                 <Pressable
-                  onPress={() => {
-                    startProgram(program.id);
-                    router.replace('/' as Href);
-                  }}
+                  onPress={() => handleStart(program.id, program.title)}
                   style={styles.startBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel={active ? `Start ${program.title} på nytt` : `Start ${program.title}`}
+                  hitSlop={6}
                 >
                   <Text style={styles.startBtnText}>{active ? 'Start på nytt' : 'Start'}</Text>
                 </Pressable>
@@ -72,7 +113,7 @@ export default function ProgramsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.darkBase,
+    backgroundColor: Colors.background,
   },
   content: {
     paddingHorizontal: 24,

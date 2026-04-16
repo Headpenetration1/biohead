@@ -48,7 +48,26 @@ export default function ExerciseDetailScreen() {
     [exercise, setExerciseDuration]
   );
 
-  if (!exercise) return null;
+  if (!exercise) {
+    return (
+      <View
+        style={[
+          styles.container,
+          styles.notFoundRoot,
+          { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 },
+        ]}
+      >
+        <Animated.View entering={FadeIn.duration(300)} style={styles.notFoundCard}>
+          <Text style={styles.notFoundTitle}>Fant ikke øvelsen</Text>
+          <Text style={styles.notFoundBody}>
+            Denne lenken peker på en øvelse som ikke finnes lenger. Gå tilbake til forsiden for
+            å velge en annen.
+          </Text>
+          <HapticButton title="Til forsiden" onPress={() => router.replace('/')} />
+        </Animated.View>
+      </View>
+    );
+  }
 
   const isFavorite = state.favorites.includes(exercise.id);
   const LucideMap = LucideIcons as unknown as Record<string, React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>>;
@@ -71,7 +90,13 @@ export default function ExerciseDetailScreen() {
       />
 
       <Animated.View entering={FadeIn.duration(400)} style={styles.topRow}>
-        <Pressable onPress={() => router.back()} style={styles.backButton}>
+        <Pressable
+          onPress={() => router.back()}
+          style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="Tilbake"
+          hitSlop={8}
+        >
           <Text style={styles.backArrow}>‹</Text>
           <Text style={styles.backText}>Tilbake</Text>
         </Pressable>
@@ -155,6 +180,7 @@ export default function ExerciseDetailScreen() {
                 style={[styles.stressChip, active && styles.stressChipActive]}
                 accessibilityRole="button"
                 accessibilityLabel={`Velg stressnivå ${level} av 5`}
+                hitSlop={8}
               >
                 <Text style={[styles.stressChipText, active && styles.stressChipTextActive]}>{level}</Text>
               </Pressable>
@@ -215,11 +241,33 @@ export default function ExerciseDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.darkBase,
+    backgroundColor: Colors.background,
   },
   content: {
     paddingHorizontal: 24,
     alignItems: 'center',
+  },
+  notFoundRoot: {
+    paddingHorizontal: 24,
+    justifyContent: 'center',
+  },
+  notFoundCard: {
+    gap: 12,
+    alignItems: 'center',
+  },
+  notFoundTitle: {
+    fontFamily: Typography.fontFamily.bold,
+    fontSize: Typography.sizes['2xl'],
+    color: Colors.textPrimary,
+    textAlign: 'center',
+  },
+  notFoundBody: {
+    fontFamily: Typography.fontFamily.regular,
+    fontSize: Typography.sizes.base,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 12,
   },
   bgGlow: {
     position: 'absolute',

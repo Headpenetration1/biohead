@@ -24,11 +24,11 @@ import { nextStreakOnSessionComplete } from '@/utils/streak';
 import { syncDailyReminder } from '@/utils/reminders';
 import { syncWidgetSnapshot } from '@/utils/widgetBridge';
 
-interface AppState extends AppData {
+export interface AppState extends AppData {
   isLoading: boolean;
 }
 
-const baseInitial: AppState = {
+export const baseInitial: AppState = {
   ...defaultAppData,
   isLoading: true,
 };
@@ -86,7 +86,9 @@ type Action =
   | { type: 'SET_EXERCISE_DURATION'; payload: { exerciseId: string; duration: number } }
   | { type: 'RESET_DATA' };
 
-function reducer(state: AppState, action: Action): AppState {
+// Exported for unit testing only. Keep pure: all side effects (persist,
+// reminders, widgets) live in the Provider effects below.
+export function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'LOAD_DATA':
       return { ...state, ...action.payload, isLoading: false };
@@ -361,15 +363,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   }, [state]);
 
+  // Scheduling notifications hits native APIs and re-schedules all of our
+  // weekly/daily triggers. Doing that on every session completion (which
+  // mutates `state.sessions`) is wasteful and can cause the OS to drop/reorder
+  // planned reminders. Debounce so rapid changes (onboarding flow, bulk
+  // preference changes) collapse into a single sync.
+  const reminderSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (state.isLoading) return;
-    void syncDailyReminder(state.reminderEnabled, state.reminderTimes, {
-      adaptiveEnabled: state.reminderAdaptiveEnabled,
-      sessions: state.sessions,
-      quietWeekends: state.reminderQuietWeekends,
-      skipIfDoneToday: state.reminderSkipIfDoneToday,
-      lastSessionDate: state.lastSessionDate,
-    });
+    if (reminderSyncTimer.current) clearTimeout(reminderSyncTimer.current);
+    reminderSyncTimer.current = setTimeout(() => {
+      void syncDailyReminder(state.reminderEnabled, state.reminderTimes, {
+        adaptiveEnabled: state.reminderAdaptiveEnabled,
+        sessions: state.sessions,
+        quietWeekends: state.reminderQuietWeekends,
+        skipIfDoneToday: state.reminderSkipIfDoneToday,
+        lastSessionDate: state.lastSessionDate,
+      });
+    }, 800);
+    return () => {
+      if (reminderSyncTimer.current) clearTimeout(reminderSyncTimer.current);
+    };
   }, [
     state.isLoading,
     state.reminderEnabled,
