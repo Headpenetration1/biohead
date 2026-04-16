@@ -322,7 +322,7 @@ export const defaultAppData: AppData = {
   onboardingProfile: undefined,
   hapticsEnabled: true,
   reduceMotion: false,
-  soundMode: 'off',
+  soundMode: 'ambient',
   cueVolume: 0.55,
   ambientSoundscape: 'wind',
   ambientMix: { ...DEFAULT_AMBIENT_MIX },

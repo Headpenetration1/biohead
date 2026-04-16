@@ -13,9 +13,18 @@ import { useHaptics } from '@/hooks/useHaptics';
 import { useBreathAudio } from '@/hooks/useBreathAudio';
 import { formatTime } from '@/utils/formatTime';
 import { logMindfulSessionIfEnabled } from '@/utils/appleHealthMindful';
+import type { SoundMode } from '@/utils/storage';
 import BreathingCircle from '@/components/BreathingCircle';
 import StreakBadge from '@/components/StreakBadge';
 import HapticButton from '@/components/HapticButton';
+
+const SOUND_MODE_CYCLE: SoundMode[] = ['off', 'ambient', 'cues', 'mix'];
+const SOUND_MODE_LABEL: Record<SoundMode, string> = {
+  off: '🔇',
+  cues: '🔔',
+  ambient: '🌿',
+  mix: '🎵',
+};
 
 export default function SessionScreen() {
   useKeepAwake();
@@ -27,7 +36,7 @@ export default function SessionScreen() {
   }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { state, completeSession, rateLastSession } = useAppContext();
+  const { state, completeSession, rateLastSession, updatePreferences } = useAppContext();
   const { success, light, medium } = useHaptics(state.hapticsEnabled);
 
   const exercise = exercises.find((e) => e.id === id);
@@ -113,6 +122,13 @@ export default function SessionScreen() {
       engine.pause();
     }
   }, [engine]);
+
+  const cycleSoundMode = useCallback(() => {
+    const idx = SOUND_MODE_CYCLE.indexOf(state.soundMode);
+    const next = SOUND_MODE_CYCLE[(idx + 1) % SOUND_MODE_CYCLE.length];
+    updatePreferences({ soundMode: next });
+    light();
+  }, [state.soundMode, updatePreferences, light]);
 
   const handleQuit = useCallback(() => {
     engine.stop();
@@ -221,16 +237,29 @@ export default function SessionScreen() {
           </Pressable>
         </Animated.View>
 
-        <Animated.View entering={FadeIn.delay(300).duration(400)}>
-          <Pressable
-            onPress={() => setShowQuitModal(true)}
-            style={styles.topButton}
-            accessibilityRole="button"
-            accessibilityLabel="Avslutt økt"
-          >
-            <Text style={styles.closeIcon}>✕</Text>
-          </Pressable>
-        </Animated.View>
+        <View style={styles.topBarRight}>
+          <Animated.View entering={FadeIn.delay(300).duration(400)}>
+            <Pressable
+              onPress={cycleSoundMode}
+              style={[styles.topButton, state.soundMode !== 'off' && styles.topButtonActive]}
+              accessibilityRole="button"
+              accessibilityLabel={`Lyd: ${state.soundMode}. Trykk for å bytte`}
+            >
+              <Text style={styles.soundModeIcon}>{SOUND_MODE_LABEL[state.soundMode]}</Text>
+            </Pressable>
+          </Animated.View>
+
+          <Animated.View entering={FadeIn.delay(300).duration(400)}>
+            <Pressable
+              onPress={() => setShowQuitModal(true)}
+              style={styles.topButton}
+              accessibilityRole="button"
+              accessibilityLabel="Avslutt økt"
+            >
+              <Text style={styles.closeIcon}>✕</Text>
+            </Pressable>
+          </Animated.View>
+        </View>
       </View>
 
       <Animated.View entering={FadeIn.delay(200).duration(800)} style={styles.circleArea}>
@@ -327,6 +356,18 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.medium,
     fontSize: Typography.sizes.sm,
     color: Colors.textPrimary,
+  },
+  topBarRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  topButtonActive: {
+    borderColor: `${Colors.greenAccent}44`,
+    backgroundColor: `${Colors.greenAccent}15`,
+  },
+  soundModeIcon: {
+    fontSize: 18,
   },
   closeIcon: {
     fontSize: 16,
