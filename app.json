@@ -5,18 +5,9 @@
     "version": "1.0.0",
     "description": "Pusteøvelser for ro, fokus og energi. Din daglige mindfulness-kompanjong.",
     "orientation": "portrait",
-    "icon": "./assets/icon-app-transparent.png",
+    "icon": "./assets/icon-app.png",
     "scheme": "biohead",
     "userInterfaceStyle": "dark",
-    "splash": {
-      "image": "./assets/splash-brand-light.png",
-      "backgroundColor": "#FFF9ED",
-      "resizeMode": "contain",
-      "dark": {
-        "image": "./assets/splash-brand-dark.png",
-        "backgroundColor": "#0e2025"
-      }
-    },
     "assetBundlePatterns": [
       "assets/**/*"
     ],
@@ -24,6 +15,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "no.biohead.app",
       "buildNumber": "1",
+      "icon": "./assets/icon-app.png",
       "infoPlist": {
         "NSHealthShareUsageDescription": "Biohead kan bruke Helse for å synkronisere mindful minutes når du velger det.",
         "NSHealthUpdateUsageDescription": "Biohead lagrer mindful minutes i Apple Helse når du fullfører en pusteøkt (valgfritt).",
@@ -47,6 +39,18 @@
       "expo-av",
       "expo-notifications",
       "@sentry/react-native",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-brand-light.png",
+          "backgroundColor": "#FFF9ED",
+          "resizeMode": "contain",
+          "dark": {
+            "image": "./assets/splash-brand-dark.png",
+            "backgroundColor": "#0e2025"
+          }
+        }
+      ],
       [
         "expo-widgets",
         {
