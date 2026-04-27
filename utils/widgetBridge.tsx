@@ -60,7 +60,8 @@ function setupAndroidWidget(snapshot: WidgetSnapshot): void {
 
     if (!androidRegistered) {
       widget.registerWidgetTaskHandler(async ({ renderWidget }) => {
-        const current = latestAndroidSnapshot ?? snapshot;
+        const current = latestAndroidSnapshot;
+        if (!current) return;
         const deepLink = getDeepLink(current);
         const recommendedLabel = exerciseTitle(current.recommendedExerciseId);
         renderWidget(

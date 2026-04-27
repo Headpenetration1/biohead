@@ -190,42 +190,54 @@ export async function syncDailyReminder(
   for (const reminder of times) {
     if (options?.quietWeekends) {
       for (const weekday of [2, 3, 4, 5, 6]) {
-        await Notifications.scheduleNotificationAsync({
-          identifier: `${DAILY_REMINDER_ID_PREFIX}${idCounter++}`,
-          content: {
-            title: 'Biohead',
-            body: 'Ta en kort pustepause – du fortjener det.',
-            sound: 'default',
-            data: { reminderKind: 'daily' },
-            categoryIdentifier: REMINDER_CATEGORY_ID,
-          },
-          trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-            weekday,
-            hour: reminder.hour,
-            minute: reminder.minute,
-            ...(Platform.OS === 'android' ? { channelId: ANDROID_CHANNEL_ID } : {}),
-          },
-        });
+        try {
+          await Notifications.scheduleNotificationAsync({
+            identifier: `${DAILY_REMINDER_ID_PREFIX}${idCounter++}`,
+            content: {
+              title: 'Biohead',
+              body: 'Ta en kort pustepause – du fortjener det.',
+              sound: 'default',
+              data: { reminderKind: 'daily' },
+              categoryIdentifier: REMINDER_CATEGORY_ID,
+            },
+            trigger: {
+              type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+              weekday,
+              hour: reminder.hour,
+              minute: reminder.minute,
+              ...(Platform.OS === 'android' ? { channelId: ANDROID_CHANNEL_ID } : {}),
+            },
+          });
+        } catch (error) {
+          if (__DEV__) {
+            console.warn('scheduleNotificationAsync (weekly) failed', error);
+          }
+        }
       }
       continue;
     }
 
-    await Notifications.scheduleNotificationAsync({
-      identifier: `${DAILY_REMINDER_ID_PREFIX}${idCounter++}`,
-      content: {
-        title: 'Biohead',
-        body: 'Ta en kort pustepause – du fortjener det.',
-        sound: 'default',
-        data: { reminderKind: 'daily' },
-        categoryIdentifier: REMINDER_CATEGORY_ID,
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DAILY,
-        hour: reminder.hour,
-        minute: reminder.minute,
-        ...(Platform.OS === 'android' ? { channelId: ANDROID_CHANNEL_ID } : {}),
-      },
-    });
+    try {
+      await Notifications.scheduleNotificationAsync({
+        identifier: `${DAILY_REMINDER_ID_PREFIX}${idCounter++}`,
+        content: {
+          title: 'Biohead',
+          body: 'Ta en kort pustepause – du fortjener det.',
+          sound: 'default',
+          data: { reminderKind: 'daily' },
+          categoryIdentifier: REMINDER_CATEGORY_ID,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DAILY,
+          hour: reminder.hour,
+          minute: reminder.minute,
+          ...(Platform.OS === 'android' ? { channelId: ANDROID_CHANNEL_ID } : {}),
+        },
+      });
+    } catch (error) {
+      if (__DEV__) {
+        console.warn('scheduleNotificationAsync (daily) failed', error);
+      }
+    }
   }
 }

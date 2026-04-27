@@ -98,7 +98,9 @@ export default function SoundMixerScreen() {
       await sound.playAsync();
       setIsTonePreviewing(true);
     } catch (error) {
-      console.warn('Tone preview failed', error);
+      if (__DEV__) {
+        console.warn('Tone preview failed', error);
+      }
     } finally {
       setToneBusy(false);
     }
@@ -146,7 +148,9 @@ export default function SoundMixerScreen() {
           await sound.playAsync();
         }
       } catch (error) {
-        console.warn('Ambient preview failed', error);
+        if (__DEV__) {
+          console.warn('Ambient preview failed', error);
+        }
       } finally {
         if (!cancelled) setPreviewBusy(false);
       }

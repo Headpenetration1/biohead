@@ -49,8 +49,18 @@ function buildSineWavBytes(frequencyHz: number): Uint8Array {
 export async function ensureToneFile(frequencyHz: number): Promise<string> {
   const normalized = Math.max(40, Math.min(1000, Math.round(frequencyHz)));
   const file = new File(Paths.cache, `tone-${normalized}.wav`);
-  const bytes = buildSineWavBytes(normalized);
-  file.create({ overwrite: true });
-  file.write(bytes);
-  return file.uri;
+  if (file.exists) {
+    return file.uri;
+  }
+  try {
+    const bytes = buildSineWavBytes(normalized);
+    file.create({ overwrite: true });
+    file.write(bytes);
+    return file.uri;
+  } catch (error) {
+    if (__DEV__) {
+      console.warn('ensureToneFile failed', error);
+    }
+    throw error;
+  }
 }

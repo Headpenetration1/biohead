@@ -31,11 +31,10 @@ export default function ExerciseDetailScreen() {
   const [stressBefore, setStressBefore] = useState(3);
 
   useEffect(() => {
-    const ex = exercises.find((e) => e.id === id);
-    if (!ex) return;
+    if (!exercise) return;
     const saved = state.exerciseDurationPrefs[id];
-    setDuration(saved != null ? saved : ex.defaultDuration);
-  }, [id, state.exerciseDurationPrefs]);
+    setDuration(saved != null ? saved : exercise.defaultDuration);
+  }, [exercise, id, state.exerciseDurationPrefs]);
 
   useEffect(() => {
     if (state.stressCheck?.level != null) {
