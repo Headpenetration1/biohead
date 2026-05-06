@@ -99,6 +99,12 @@ export interface OnboardingProfile {
   focusNeed: number;
 }
 
+export interface HealthSyncStatus {
+  lastSyncedAt?: string;
+  lastErrorAt?: string;
+  lastError?: string;
+}
+
 function clampHour(value: unknown, fallback: number): number {
   if (typeof value !== 'number' || Number.isNaN(value)) return fallback;
   return Math.max(0, Math.min(23, Math.round(value)));
@@ -279,6 +285,18 @@ function parseOnboardingProfile(raw: unknown): OnboardingProfile | undefined {
   };
 }
 
+function parseHealthSyncStatus(raw: unknown): HealthSyncStatus {
+  if (raw == null || typeof raw !== 'object') return {};
+  const cast = raw as Partial<HealthSyncStatus>;
+  return {
+    lastSyncedAt:
+      typeof cast.lastSyncedAt === 'string' ? cast.lastSyncedAt : undefined,
+    lastErrorAt:
+      typeof cast.lastErrorAt === 'string' ? cast.lastErrorAt : undefined,
+    lastError: typeof cast.lastError === 'string' ? cast.lastError.slice(0, 160) : undefined,
+  };
+}
+
 export interface AppData {
   currentStreak: number;
   lastSessionDate: string;
@@ -314,6 +332,7 @@ export interface AppData {
   toneVolume: number;
   /** iOS: log Mindful Session to Apple Health when a session completes */
   healthSyncEnabled: boolean;
+  healthSyncStatus: HealthSyncStatus;
 }
 
 export const defaultAppData: AppData = {
@@ -347,6 +366,7 @@ export const defaultAppData: AppData = {
   toneFrequency: 157,
   toneVolume: 0.5,
   healthSyncEnabled: false,
+  healthSyncStatus: {},
 };
 
 export async function loadAppData(): Promise<AppData> {
@@ -408,6 +428,9 @@ export async function loadAppData(): Promise<AppData> {
           typeof parsed.toneVolume === 'number' && !Number.isNaN(parsed.toneVolume)
             ? Math.max(0, Math.min(1, parsed.toneVolume))
             : defaultAppData.toneVolume,
+        healthSyncStatus: parseHealthSyncStatus(
+          (parsed as { healthSyncStatus?: unknown }).healthSyncStatus
+        ),
       };
     }
     return defaultAppData;

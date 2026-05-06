@@ -8,6 +8,7 @@ import { getProgramById, type ProgramId } from '@/constants/programs';
 import {
   type AmbientMixPreset,
   AppData,
+  type HealthSyncStatus,
   type OnboardingProfile,
   ReminderTime,
   type SavedSession,
@@ -33,11 +34,22 @@ export const baseInitial: AppState = {
   isLoading: true,
 };
 
+interface ProgramCompletionPayload {
+  id: ProgramId;
+  day: number;
+  duration: number;
+}
+
 type Action =
   | { type: 'LOAD_DATA'; payload: AppData }
   | {
       type: 'COMPLETE_SESSION';
-      payload: { exerciseId: string; duration: number; stressBefore?: number };
+      payload: {
+        exerciseId: string;
+        duration: number;
+        stressBefore?: number;
+        program?: ProgramCompletionPayload;
+      };
     }
   | { type: 'RATE_LAST_SESSION'; payload: number }
   | { type: 'TOGGLE_FAVORITE'; payload: string }
@@ -60,6 +72,7 @@ type Action =
     }
   | { type: 'DELETE_SESSION_SETUP'; payload: string }
   | { type: 'SET_STRESS_CHECK'; payload?: StressCheckSnapshot }
+  | { type: 'SET_HEALTH_SYNC_STATUS'; payload: HealthSyncStatus }
   | {
       type: 'UPDATE_PREFERENCES';
       payload: Partial<{
@@ -128,7 +141,13 @@ export function reducer(state: AppState, action: Action): AppState {
           if (!program) return undefined;
           const step = program.days[state.activeProgram.currentDay - 1];
           const alreadyCompletedToday = state.activeProgram.lastCompletedDate === today;
-          const matchesProgramStep = step?.exerciseId === action.payload.exerciseId;
+          const programCompletion = action.payload.program;
+          const matchesProgramStep =
+            step?.exerciseId === action.payload.exerciseId &&
+            step.duration === Math.round(action.payload.duration) &&
+            programCompletion?.id === state.activeProgram.id &&
+            programCompletion.day === step.day &&
+            programCompletion.duration === step.duration;
           if (!step || alreadyCompletedToday || !matchesProgramStep) return state.activeProgram;
           const completedDays = Math.min(program.days.length, state.activeProgram.completedDays + 1);
           if (completedDays >= program.days.length) return undefined;
@@ -270,6 +289,15 @@ export function reducer(state: AppState, action: Action): AppState {
         stressCheck: action.payload,
       };
 
+    case 'SET_HEALTH_SYNC_STATUS':
+      return {
+        ...state,
+        healthSyncStatus: {
+          ...state.healthSyncStatus,
+          ...action.payload,
+        },
+      };
+
     case 'UPDATE_PREFERENCES':
       return { ...state, ...action.payload };
 
@@ -313,7 +341,12 @@ export type PreferenceUpdates = Partial<{
 
 interface AppContextValue {
   state: AppState;
-  completeSession: (exerciseId: string, duration: number, stressBefore?: number) => void;
+  completeSession: (
+    exerciseId: string,
+    duration: number,
+    stressBefore?: number,
+    program?: ProgramCompletionPayload
+  ) => void;
   rateLastSession: (effectScore: number) => void;
   toggleFavorite: (exerciseId: string) => void;
   completeOnboarding: (payload?: {
@@ -334,6 +367,7 @@ interface AppContextValue {
   }) => void;
   deleteSessionSetup: (sessionId: string) => void;
   setStressCheck: (level: number) => void;
+  recordHealthSyncStatus: (status: HealthSyncStatus) => void;
   updatePreferences: (prefs: PreferenceUpdates) => void;
   setExerciseDuration: (exerciseId: string, duration: number) => void;
   resetData: () => void;
@@ -400,9 +434,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     syncWidgetSnapshot(state.widgetSnapshot);
   }, [state.isLoading, state.widgetSnapshot]);
 
-  const completeSession = useCallback((exerciseId: string, duration: number, stressBefore?: number) => {
-    dispatch({ type: 'COMPLETE_SESSION', payload: { exerciseId, duration, stressBefore } });
-  }, []);
+  const completeSession = useCallback(
+    (
+      exerciseId: string,
+      duration: number,
+      stressBefore?: number,
+      program?: ProgramCompletionPayload
+    ) => {
+      dispatch({ type: 'COMPLETE_SESSION', payload: { exerciseId, duration, stressBefore, program } });
+    },
+    []
+  );
 
   const rateLastSession = useCallback((effectScore: number) => {
     dispatch({ type: 'RATE_LAST_SESSION', payload: effectScore });
@@ -465,6 +507,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const recordHealthSyncStatus = useCallback((status: HealthSyncStatus) => {
+    dispatch({ type: 'SET_HEALTH_SYNC_STATUS', payload: status });
+  }, []);
+
   const updatePreferences = useCallback((prefs: PreferenceUpdates) => {
     dispatch({ type: 'UPDATE_PREFERENCES', payload: prefs });
   }, []);
@@ -493,6 +539,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         saveSessionSetup,
         deleteSessionSetup,
         setStressCheck,
+        recordHealthSyncStatus,
         updatePreferences,
         setExerciseDuration,
         resetData,

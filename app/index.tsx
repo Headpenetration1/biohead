@@ -19,6 +19,7 @@ import { getProgramById } from '@/constants/programs';
 import { useAppContext } from '@/context/AppContext';
 import { useHaptics } from '@/hooks/useHaptics';
 import { getAdaptiveRecommendation } from '@/utils/recommendation';
+import { getFreshStressCheck } from '@/utils/stressCheck';
 import {
   getProgressionLevel,
   getTotalMinutes,
@@ -79,6 +80,10 @@ export default function HomeScreen() {
   }, [state.userGoal]);
 
   const favoriteSet = useMemo(() => new Set(state.favorites), [state.favorites]);
+  const freshStressCheck = useMemo(
+    () => getFreshStressCheck(state.stressCheck),
+    [state.stressCheck]
+  );
 
   const favoriteExercises = useMemo(() => {
     return state.favorites
@@ -96,14 +101,14 @@ export default function HomeScreen() {
       sessions: state.sessions,
       exercises,
       goal: state.userGoal,
-      stressLevel: state.stressCheck?.level,
+      stressLevel: freshStressCheck?.level,
       onboardingProfile: state.onboardingProfile,
     });
     if (!rec) return null;
     const exercise = exercises.find((entry) => entry.id === rec.exerciseId);
     if (!exercise) return null;
     return { ...rec, exercise };
-  }, [state.sessions, state.userGoal, state.stressCheck?.level, state.onboardingProfile]);
+  }, [state.sessions, state.userGoal, freshStressCheck?.level, state.onboardingProfile]);
 
   const lastSessionExercise = useMemo(() => {
     if (state.sessions.length === 0) return null;
@@ -124,7 +129,7 @@ export default function HomeScreen() {
   }, [activeProgram, state.activeProgram]);
   const isKickstartProgram = useMemo(() => {
     const id = state.activeProgram?.id;
-    return id === 'calm3' || id === 'focus3' || id === 'sleep3';
+    return id === 'calm3' || id === 'focus3' || id === 'energy3' || id === 'sleep3';
   }, [state.activeProgram?.id]);
   const savedSessions = useMemo(
     () =>
@@ -244,17 +249,28 @@ export default function HomeScreen() {
               <Text style={styles.todayPlanSub}>
                 {exercises.find((entry) => entry.id === activeProgramDay.exerciseId)?.title ?? activeProgramDay.exerciseId}
                 {' · '}
-                {activeProgramDay.duration}s
+                {activeProgramDay.duration} sek
               </Text>
               <View style={styles.todayPlanActions}>
                 <Pressable
                   onPress={() =>
                     router.push({
-                      pathname: '/exercise/[id]',
-                      params: { id: activeProgramDay.exerciseId },
+                      pathname: '/exercise/session',
+                      params: {
+                        id: activeProgramDay.exerciseId,
+                        duration: String(activeProgramDay.duration),
+                        stress:
+                          freshStressCheck?.level != null
+                            ? String(freshStressCheck.level)
+                            : undefined,
+                        programId: activeProgram.id,
+                        programDay: String(activeProgramDay.day),
+                      },
                     })
                   }
                   style={styles.todayPlanPrimaryBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Start dag ${activeProgramDay.day} i programmet, ${activeProgramDay.duration} sekunder`}
                 >
                   <Text style={styles.todayPlanPrimaryBtnText}>Start dagens øvelse</Text>
                 </Pressable>
@@ -314,7 +330,7 @@ export default function HomeScreen() {
             <Text style={styles.stressSub}>Hvordan føles kroppen akkurat nå?</Text>
             <View style={styles.stressLevels}>
               {[1, 2, 3, 4, 5].map((level) => {
-                const active = state.stressCheck?.level === level;
+                const active = freshStressCheck?.level === level;
                 return (
                   <Pressable
                     key={level}

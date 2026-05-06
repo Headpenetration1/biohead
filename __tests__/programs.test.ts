@@ -13,4 +13,10 @@ describe('program definitions', () => {
     expect(calm?.title).toContain('3 dager');
     expect(getProgramById('unknown')).toBeUndefined();
   });
+
+  it('has a dedicated energy kickstart instead of falling back to calm', () => {
+    const energy = getProgramById('energy3');
+    expect(energy?.days[0].exerciseId).toBe('energy');
+    expect(energy?.title.toLowerCase()).toContain('energi');
+  });
 });

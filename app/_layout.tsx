@@ -43,7 +43,7 @@ function RootLayout() {
   return (
     <ErrorBoundary>
       <AppProvider>
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
         <Stack
           screenOptions={{
             headerShown: false,

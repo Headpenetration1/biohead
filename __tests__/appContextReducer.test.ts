@@ -95,7 +95,11 @@ describe('AppContext reducer', () => {
         .days[0].exerciseId;
       const next = reducer(state, {
         type: 'COMPLETE_SESSION',
-        payload: { exerciseId: firstExerciseId, duration: 60 },
+        payload: {
+          exerciseId: firstExerciseId,
+          duration: 60,
+          program: { id: 'calm3', day: 1, duration: 60 },
+        },
       });
       expect(next.activeProgram).toMatchObject({
         completedDays: 1,
@@ -116,6 +120,44 @@ describe('AppContext reducer', () => {
       const next = reducer(state, {
         type: 'COMPLETE_SESSION',
         payload: { exerciseId: '__definitely-not-a-real-id__', duration: 60 },
+      });
+      expect(next.activeProgram).toEqual(state.activeProgram);
+    });
+
+    it('does not advance the program without explicit program-day context', () => {
+      const state = makeState({
+        activeProgram: {
+          id: 'calm3',
+          currentDay: 1,
+          completedDays: 0,
+          lastCompletedDate: undefined,
+        },
+      });
+      const firstDay = require('@/constants/programs').getProgramById('calm3').days[0];
+      const next = reducer(state, {
+        type: 'COMPLETE_SESSION',
+        payload: { exerciseId: firstDay.exerciseId, duration: firstDay.duration },
+      });
+      expect(next.activeProgram).toEqual(state.activeProgram);
+    });
+
+    it('does not advance the program when the duration does not match the current day', () => {
+      const state = makeState({
+        activeProgram: {
+          id: 'focus3',
+          currentDay: 3,
+          completedDays: 2,
+          lastCompletedDate: undefined,
+        },
+      });
+      const thirdDay = require('@/constants/programs').getProgramById('focus3').days[2];
+      const next = reducer(state, {
+        type: 'COMPLETE_SESSION',
+        payload: {
+          exerciseId: thirdDay.exerciseId,
+          duration: 60,
+          program: { id: 'focus3', day: thirdDay.day, duration: 60 },
+        },
       });
       expect(next.activeProgram).toEqual(state.activeProgram);
     });

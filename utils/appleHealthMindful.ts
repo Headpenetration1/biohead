@@ -60,6 +60,11 @@ export async function requestHealthKitMindfulAccess(): Promise<boolean> {
 // awaiter to release so we never block the session completion flow.
 const HEALTH_CALLBACK_TIMEOUT_MS = 5000;
 
+export type MindfulSessionLogResult =
+  | { status: 'skipped' }
+  | { status: 'synced'; syncedAt: string }
+  | { status: 'failed'; error: string; failedAt: string };
+
 function withTimeout<T>(factory: (resolve: (value: T) => void) => void, timeoutValue: T): Promise<T> {
   return new Promise<T>((resolve) => {
     let settled = false;
@@ -83,24 +88,29 @@ function withTimeout<T>(factory: (resolve: (value: T) => void) => void, timeoutV
 export async function logMindfulSessionIfEnabled(
   enabled: boolean,
   durationSeconds: number
-): Promise<void> {
-  if (!enabled || durationSeconds <= 0) return;
+): Promise<MindfulSessionLogResult> {
+  if (!enabled || durationSeconds <= 0) return { status: 'skipped' };
 
   const HK = getHealthModule();
   const perms = mindfulPermissions();
-  if (!HK || !perms) return;
+  if (!HK || !perms) {
+    return {
+      status: 'failed',
+      error: 'Apple Helse er ikke tilgjengelig i denne builden.',
+      failedAt: new Date().toISOString(),
+    };
+  }
 
   const initError = await withTimeout<string | null>((resolve) => {
     HK.initHealthKit(perms, (error: string) => resolve(error || null));
   }, 'timeout');
 
   if (initError) {
-    if (initError !== 'timeout') {
-      console.warn('[AppleHealth] initHealthKit failed:', initError);
-    } else {
-      console.warn('[AppleHealth] initHealthKit timed out');
-    }
-    return;
+    return {
+      status: 'failed',
+      error: initError === 'timeout' ? 'Apple Helse svarte ikke i tide.' : initError,
+      failedAt: new Date().toISOString(),
+    };
   }
 
   const end = new Date();
@@ -118,10 +128,12 @@ export async function logMindfulSessionIfEnabled(
   }, 'timeout');
 
   if (saveError) {
-    if (saveError !== 'timeout') {
-      console.warn('[AppleHealth] saveMindfulSession failed:', saveError);
-    } else {
-      console.warn('[AppleHealth] saveMindfulSession timed out');
-    }
+    return {
+      status: 'failed',
+      error: saveError === 'timeout' ? 'Apple Helse svarte ikke i tide.' : saveError,
+      failedAt: new Date().toISOString(),
+    };
   }
+
+  return { status: 'synced', syncedAt: end.toISOString() };
 }

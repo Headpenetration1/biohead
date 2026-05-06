@@ -20,8 +20,9 @@ interface BreathingCircleProps {
   circleScale: SharedValue<number>;
   glowOpacity: SharedValue<number>;
   ringProgress: SharedValue<number>;
-  /** VoiceOver: phase + remaining time */
+  /** VoiceOver: stable label; phase changes are announced by the session screen. */
   accessibilityLabel: string;
+  accessibilityValueText?: string;
 }
 
 const CIRCLE_R = 80;
@@ -39,6 +40,7 @@ export default function BreathingCircle({
   glowOpacity,
   ringProgress,
   accessibilityLabel,
+  accessibilityValueText,
 }: BreathingCircleProps) {
   // Animert hovedsirkel (Outer Core)
   const animatedCircleProps = useAnimatedProps(() => ({
@@ -77,12 +79,12 @@ export default function BreathingCircle({
       // "progressbar" conveys "this is something that changes over time"
       // better than "text" for a running timer with a progress ring.
       accessibilityRole="progressbar"
-      accessibilityLiveRegion="polite"
       accessibilityLabel={accessibilityLabel}
       accessibilityValue={{
         min: 0,
         max: 100,
         now: Math.round(Math.min(1, Math.max(0, totalProgress)) * 100),
+        text: accessibilityValueText,
       }}
     >
       {/* Ytre glow */}

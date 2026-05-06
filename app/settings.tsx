@@ -31,14 +31,34 @@ const REMINDER_PRESETS: { label: string; hour: number; minute: number }[] = [
 const WEEKLY_GOAL_PRESETS = [20, 40, 60, 90] as const;
 const WEEKLY_SESSION_GOAL_PRESETS = [3, 5, 7, 10] as const;
 
+function formatLocalDateTime(value?: string): string | undefined {
+  if (!value) return undefined;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return date.toLocaleString('nb-NO', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const {
     state,
     updatePreferences,
+    recordHealthSyncStatus,
     resetData,
   } = useAppContext();
+  const lastHealthSyncText = formatLocalDateTime(state.healthSyncStatus.lastSyncedAt);
+  const lastHealthErrorText = formatLocalDateTime(state.healthSyncStatus.lastErrorAt);
+  const hasNewHealthError =
+    state.healthSyncStatus.lastErrorAt != null &&
+    (!state.healthSyncStatus.lastSyncedAt ||
+      new Date(state.healthSyncStatus.lastErrorAt).getTime() >
+        new Date(state.healthSyncStatus.lastSyncedAt).getTime());
 
   const isReminderSelected = useCallback(
     (target: ReminderTime) =>
@@ -75,11 +95,19 @@ export default function SettingsScreen() {
           'Apple Helse',
           'Biohead trenger tillatelse for å skrive mindful minutes. Sjekk Helse-appen under Innstillinger hvis du tidligere avslo.'
         );
+        recordHealthSyncStatus({
+          lastErrorAt: new Date().toISOString(),
+          lastError: 'Mangler tillatelse til Apple Helse.',
+        });
         return;
       }
       updatePreferences({ healthSyncEnabled: true });
+      recordHealthSyncStatus({
+        lastErrorAt: undefined,
+        lastError: undefined,
+      });
     },
-    [updatePreferences]
+    [recordHealthSyncStatus, updatePreferences]
   );
 
   const onReminderToggle = useCallback(
@@ -140,6 +168,27 @@ export default function SettingsScreen() {
       </Animated.View>
 
       <Text style={styles.title}>Innstillinger</Text>
+
+      <Text style={styles.sectionLabel}>Personlig</Text>
+      <View style={styles.card}>
+        <Pressable
+          onPress={() =>
+            router.push({
+              pathname: '/onboarding',
+              params: { mode: 'retake' },
+            })
+          }
+          style={styles.linkRow}
+          accessibilityRole="button"
+          accessibilityLabel="Endre mål eller ta onboarding på nytt"
+        >
+          <View style={styles.rowText}>
+            <Text style={styles.rowTitle}>Endre mål</Text>
+            <Text style={styles.rowSub}>Ta onboarding på nytt uten å slette historikk</Text>
+          </View>
+          <Text style={styles.linkArrow}>›</Text>
+        </Pressable>
+      </View>
 
       <Text style={styles.sectionLabel}>Økt</Text>
       <View style={styles.card}>
@@ -319,6 +368,23 @@ export default function SettingsScreen() {
                 thumbColor={state.healthSyncEnabled ? Colors.greenAccent : '#888'}
               />
             </View>
+            {state.healthSyncEnabled ? (
+              <>
+                <View style={styles.divider} />
+                <View style={styles.statusBlock}>
+                  <Text style={[styles.statusText, hasNewHealthError && styles.statusTextError]}>
+                    {hasNewHealthError
+                      ? `Kunne ikke skrive til Helse${lastHealthErrorText ? ` (${lastHealthErrorText})` : ''}`
+                      : lastHealthSyncText
+                        ? `Sist synket: ${lastHealthSyncText}`
+                        : 'Venter på første fullførte økt å synke'}
+                  </Text>
+                  {hasNewHealthError && state.healthSyncStatus.lastError ? (
+                    <Text style={styles.statusSub}>{state.healthSyncStatus.lastError}</Text>
+                  ) : null}
+                </View>
+              </>
+            ) : null}
           </View>
         </>
       ) : null}
@@ -472,6 +538,25 @@ const styles = StyleSheet.create({
   },
   presetChipTextActive: {
     color: Colors.greenAccent,
+  },
+  statusBlock: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  statusText: {
+    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.sizes.sm,
+    color: Colors.greenAccent,
+  },
+  statusTextError: {
+    color: Colors.error,
+  },
+  statusSub: {
+    fontFamily: Typography.fontFamily.regular,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textSecondary,
+    lineHeight: 20,
+    marginTop: 4,
   },
   dangerRow: {
     paddingVertical: 16,

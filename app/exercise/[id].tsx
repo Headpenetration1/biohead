@@ -17,6 +17,7 @@ import { useAppContext } from '@/context/AppContext';
 import { useHaptics } from '@/hooks/useHaptics';
 import { ExerciseSoundStrip } from '@/components/ExerciseSoundStrip';
 import { getNextSoundMode } from '@/constants/sessionSoundUi';
+import { getFreshStressCheck } from '@/utils/stressCheck';
 
 export default function ExerciseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -37,10 +38,11 @@ export default function ExerciseDetailScreen() {
   }, [exercise, id, state.exerciseDurationPrefs]);
 
   useEffect(() => {
-    if (state.stressCheck?.level != null) {
-      setStressBefore(state.stressCheck.level);
+    const freshStressCheck = getFreshStressCheck(state.stressCheck);
+    if (freshStressCheck?.level != null) {
+      setStressBefore(freshStressCheck.level);
     }
-  }, [state.stressCheck?.level]);
+  }, [state.stressCheck]);
 
   const onDurationChange = useCallback(
     (value: number) => {

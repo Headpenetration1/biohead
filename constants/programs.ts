@@ -3,6 +3,7 @@ import type { ExerciseId } from '@/constants/exercises';
 export type ProgramId =
   | 'calm3'
   | 'focus3'
+  | 'energy3'
   | 'sleep3'
   | 'calm7'
   | 'focus7'
@@ -47,6 +48,17 @@ export const PROGRAMS: ProgramDefinition[] = [
       { day: 1, exerciseId: 'focus', duration: 60, label: 'Box start' },
       { day: 2, exerciseId: 'energy', duration: 60, label: 'Aktivering' },
       { day: 3, exerciseId: 'focus', duration: 90, label: 'Dypere fokus' },
+    ],
+  },
+  {
+    id: 'energy3',
+    title: '3 dager kickstart energi',
+    subtitle: 'Lett aktivering uten stresspåslag',
+    description: 'Tre korte økter for å bygge energi og tempo på en kontrollert måte.',
+    days: [
+      { day: 1, exerciseId: 'energy', duration: 60, label: 'Myk aktivering' },
+      { day: 2, exerciseId: 'focus', duration: 60, label: 'Klar retning' },
+      { day: 3, exerciseId: 'balance', duration: 90, label: 'Energi med ro' },
     ],
   },
   {

@@ -1,5 +1,15 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, Pressable, Modal, StyleSheet, BackHandler, AppState } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import {
+  View,
+  Text,
+  Pressable,
+  Modal,
+  StyleSheet,
+  BackHandler,
+  AppState,
+  AccessibilityInfo,
+  ScrollView,
+} from 'react-native';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useKeepAwake } from 'expo-keep-awake';
@@ -7,6 +17,7 @@ import Animated, { FadeIn, FadeInDown, ZoomIn, BounceIn } from 'react-native-rea
 import { Colors } from '@/constants/colors';
 import { Typography } from '@/constants/typography';
 import { exercises } from '@/constants/exercises';
+import type { ProgramId } from '@/constants/programs';
 import { useAppContext } from '@/context/AppContext';
 import { useBreathingEngine } from '@/hooks/useBreathingEngine';
 import { useHaptics } from '@/hooks/useHaptics';
@@ -22,23 +33,41 @@ import { getNextSoundMode } from '@/constants/sessionSoundUi';
 export default function SessionScreen() {
   useKeepAwake();
 
-  const { id, duration: durationParam, stress } = useLocalSearchParams<{
+  const {
+    id,
+    duration: durationParam,
+    stress,
+    programId,
+    programDay,
+  } = useLocalSearchParams<{
     id: string;
     duration: string;
     stress?: string;
+    programId?: ProgramId;
+    programDay?: string;
   }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { state, completeSession, rateLastSession, updatePreferences } = useAppContext();
+  const { state, completeSession, rateLastSession, updatePreferences, recordHealthSyncStatus } =
+    useAppContext();
   const { success, light, medium } = useHaptics(state.hapticsEnabled);
 
   const exercise = exercises.find((e) => e.id === id);
   const totalDuration = Number(durationParam) || 60;
   const stressBefore = stress != null ? Math.max(1, Math.min(5, Math.round(Number(stress) || 3))) : undefined;
+  const programDayNumber = programDay != null ? Math.round(Number(programDay)) : undefined;
+  const programCompletion = useMemo(
+    () =>
+      programId && programDayNumber && programDayNumber > 0
+        ? { id: programId, day: programDayNumber, duration: totalDuration }
+        : undefined,
+    [programId, programDayNumber, totalDuration]
+  );
 
   const [showQuitModal, setShowQuitModal] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [effectScore, setEffectScore] = useState<number | null>(null);
+  const [audioPauseReason, setAudioPauseReason] = useState<string | null>(null);
   // Synchronous guard to make sure a completed session is logged exactly once,
   // even if the effect below runs twice (e.g. React Strict Mode) before
   // `setIsComplete(true)` has flushed.
@@ -49,8 +78,19 @@ export default function SessionScreen() {
     totalDuration,
     reduceMotion: state.reduceMotion,
   });
+  const engineRef = useRef(engine);
+  useEffect(() => {
+    engineRef.current = engine;
+  }, [engine]);
 
   const sessionActive = engine.isActive && !isComplete;
+  const handleAudioInterrupted = useCallback(() => {
+    const currentEngine = engineRef.current;
+    setAudioPauseReason('Økten er pauset fordi lyden ble avbrutt.');
+    if (currentEngine.isActive && !currentEngine.isPaused) {
+      currentEngine.pause();
+    }
+  }, []);
 
   useBreathAudio(
     state.soundMode,
@@ -62,21 +102,24 @@ export default function SessionScreen() {
     engine.currentPhase,
     state.toneEnabled,
     state.toneFrequency,
-    state.toneVolume
+    state.toneVolume,
+    handleAudioInterrupted
   );
 
-  // Kick the breathing engine off once when the screen mounts with a valid
-  // exercise. We guard with a ref instead of leaving the dep-array empty, so
-  // re-renders (unstable engine reference, Strict Mode double-mount) cannot
-  // accidentally start the engine twice or leave it stuck.
   const hasStartedRef = useRef(false);
-  useEffect(() => {
+  const startSessionOnce = useCallback(() => {
     if (hasStartedRef.current) return;
-    if (!exercise || isComplete) return;
+    engine.start();
     hasStartedRef.current = true;
-    const timer = setTimeout(() => engine.start(), 500);
-    return () => clearTimeout(timer);
-  }, [exercise, engine, isComplete]);
+  }, [engine.start]);
+
+  // Kick the breathing engine off once when the screen mounts with a valid
+  // exercise. Starting synchronously avoids the previous timeout cleanup race
+  // where a re-render could cancel `engine.start()` after the guard was set.
+  useEffect(() => {
+    if (!exercise || isComplete) return;
+    startSessionOnce();
+  }, [exercise, isComplete, startSessionOnce]);
 
   const prevPhase = useRef(engine.currentPhase);
   useEffect(() => {
@@ -88,6 +131,7 @@ export default function SessionScreen() {
       } else if (engine.currentPhase === 'hold' || engine.currentPhase === 'holdOut') {
         medium();
       }
+      AccessibilityInfo.announceForAccessibility(engine.currentLabel);
     }
   }, [engine.currentPhase, engine.isActive, engine.isPaused, light, medium]);
 
@@ -121,8 +165,21 @@ export default function SessionScreen() {
       setIsComplete(true);
       success();
       if (exercise) {
-        completeSession(exercise.id, totalDuration, stressBefore);
-        void logMindfulSessionIfEnabled(state.healthSyncEnabled, totalDuration);
+        completeSession(exercise.id, totalDuration, stressBefore, programCompletion);
+        void logMindfulSessionIfEnabled(state.healthSyncEnabled, totalDuration).then((result) => {
+          if (result.status === 'synced') {
+            recordHealthSyncStatus({
+              lastSyncedAt: result.syncedAt,
+              lastErrorAt: undefined,
+              lastError: undefined,
+            });
+          } else if (result.status === 'failed') {
+            recordHealthSyncStatus({
+              lastErrorAt: result.failedAt,
+              lastError: result.error,
+            });
+          }
+        });
       }
     }
   }, [
@@ -133,12 +190,15 @@ export default function SessionScreen() {
     totalDuration,
     stressBefore,
     completeSession,
+    programCompletion,
+    recordHealthSyncStatus,
     success,
     state.healthSyncEnabled,
   ]);
 
   const handlePauseResume = useCallback(() => {
     if (engine.isPaused) {
+      setAudioPauseReason(null);
       engine.resume();
     } else {
       engine.pause();
@@ -173,11 +233,19 @@ export default function SessionScreen() {
     );
   }
 
-  const a11yBreathLabel = `${engine.isPaused ? 'Pause' : engine.currentLabel}, ${formatTime(engine.remainingSeconds)} gjenstår av økten`;
+  const a11yBreathLabel = `Pusteanker: ${engine.isPaused ? 'Pause' : engine.currentLabel}`;
+  const a11yProgressText = `${formatTime(engine.remainingSeconds)} gjenstår`;
 
   if (isComplete) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      <ScrollView
+        style={styles.completeScroll}
+        contentContainerStyle={[
+          styles.completeContent,
+          { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={[styles.bgGlow, { backgroundColor: exercise.glowColor }]} />
 
         <Animated.View
@@ -247,7 +315,7 @@ export default function SessionScreen() {
               // Reset one-shot guards so the follow-up round is logged like
               // any other session (streak, history, widget, HealthKit).
               hasLoggedCompletionRef.current = false;
-              hasStartedRef.current = false;
+              hasStartedRef.current = true;
               setIsComplete(false);
               setEffectScore(null);
               engine.start();
@@ -255,7 +323,7 @@ export default function SessionScreen() {
             style={{ width: '100%' }}
           />
         </Animated.View>
-      </View>
+      </ScrollView>
     );
   }
 
@@ -300,8 +368,17 @@ export default function SessionScreen() {
             onToggleTone={toggleToneInSession}
             onOpenMixer={() => router.push('/lydmikser' as Href)}
             kickerText="Lyd under økt"
+            compact
           />
         </Animated.View>
+        {audioPauseReason ? (
+          <Text
+            style={styles.audioPauseNotice}
+            accessibilityRole="alert"
+          >
+            {audioPauseReason}
+          </Text>
+        ) : null}
       </View>
 
       <Animated.View entering={FadeIn.delay(200).duration(800)} style={[styles.circleArea, styles.circleAreaBelowSound]}>
@@ -314,6 +391,7 @@ export default function SessionScreen() {
           glowOpacity={engine.glowOpacity}
           ringProgress={engine.ringProgress}
           accessibilityLabel={a11yBreathLabel}
+          accessibilityValueText={a11yProgressText}
         />
       </Animated.View>
 
@@ -367,6 +445,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  completeScroll: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  completeContent: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
   missingRoot: {
     paddingHorizontal: 24,
     gap: 12,
@@ -396,24 +484,25 @@ const styles = StyleSheet.create({
 
   topBarOuter: {
     position: 'absolute',
-    left: 24,
-    right: 24,
+    left: 18,
+    right: 18,
     zIndex: 10,
   },
   topBarRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   topButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    backgroundColor: 'rgba(14,32,37,0.05)',
-    borderRadius: 16,
+    minHeight: 44,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    backgroundColor: 'rgba(14,32,37,0.045)',
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: 'rgba(14,32,37,0.05)',
   },
@@ -438,7 +527,14 @@ const styles = StyleSheet.create({
   },
   /** Ekstra luft så pustesirkelen ikke skjules av det nye lyd-panelet øverst. */
   circleAreaBelowSound: {
-    paddingTop: 108,
+    paddingTop: 48,
+  },
+  audioPauseNotice: {
+    marginTop: 8,
+    fontFamily: Typography.fontFamily.medium,
+    fontSize: Typography.sizes.xs,
+    color: Colors.textSecondary,
+    textAlign: 'center',
   },
 
   bottomLabel: {

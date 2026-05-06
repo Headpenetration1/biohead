@@ -7,11 +7,15 @@ import { ensureAudioMode } from '@/utils/audioMode';
 import {
   type AmbientMix,
   type AmbientSoundscape,
-  AMBIENT_SOUND_MODULES,
-  AMBIENT_SOUND_VOLUMES,
 } from '@/constants/ambientSounds';
 import {
-  activeAmbientTracks,
+  applyAmbientMix,
+  ensureAmbientSounds,
+  pauseAmbientSounds,
+  playAmbientSounds,
+  unloadAmbientSounds,
+} from '@/utils/ambientAudio';
+import {
   areCuesEnabled,
   effectiveCueVolume,
   isAmbientEnabled,
@@ -24,14 +28,15 @@ const holdCue = require('@/assets/sounds/cue_hold.wav');
 export function useBreathAudio(
   soundMode: SoundMode,
   cueVolume: number,
-  ambientSoundscape: AmbientSoundscape,
+  _ambientSoundscape: AmbientSoundscape,
   ambientMix: AmbientMix,
   isSessionActive: boolean,
   isPaused: boolean,
   currentPhase: BreathingPhase,
   toneEnabled = false,
   toneFrequency = 157,
-  toneVolume = 0.5
+  toneVolume = 0.5,
+  onAudioInterrupted?: () => void
 ) {
   const ambientEnabled = isAmbientEnabled(soundMode);
   const cuesEnabled = areCuesEnabled(soundMode, cueVolume);
@@ -39,6 +44,9 @@ export function useBreathAudio(
   const toneRef = useRef<Audio.Sound | null>(null);
   const cueRef = useRef<Audio.Sound | null>(null);
   const lastPhaseRef = useRef<BreathingPhase | null>(null);
+  const ambientGenerationRef = useRef(0);
+  const audioInterruptedRef = useRef(false);
+  const shouldLoopsBePlayingRef = useRef(false);
 
   useEffect(() => {
     if (!isSessionActive) {
@@ -47,22 +55,7 @@ export function useBreathAudio(
   }, [isSessionActive]);
 
   const unloadAmbient = useCallback(async () => {
-    const sounds = Object.values(ambientRefs.current).filter(
-      (sound): sound is Audio.Sound => sound != null
-    );
-    ambientRefs.current = {};
-    for (const sound of sounds) {
-      try {
-        await sound.stopAsync();
-      } catch {
-        /* ignore */
-      }
-      try {
-        await sound.unloadAsync();
-      } catch {
-        /* ignore */
-      }
-    }
+    await unloadAmbientSounds(ambientRefs.current);
   }, []);
 
   const unloadTone = useCallback(async () => {
@@ -84,41 +77,56 @@ export function useBreathAudio(
     }
   }, []);
 
-  // Ambient loop
+  const handleUnexpectedAudioStop = useCallback((status: AVPlaybackStatus) => {
+    if (!status.isLoaded) {
+      if ('error' in status && status.error && !audioInterruptedRef.current) {
+        audioInterruptedRef.current = true;
+        onAudioInterrupted?.();
+      }
+      return;
+    }
+    if (
+      shouldLoopsBePlayingRef.current &&
+      status.positionMillis > 0 &&
+      !status.isPlaying &&
+      !status.isBuffering &&
+      !audioInterruptedRef.current
+    ) {
+      audioInterruptedRef.current = true;
+      onAudioInterrupted?.();
+    }
+  }, [onAudioInterrupted]);
+
+  useEffect(() => {
+    shouldLoopsBePlayingRef.current = isSessionActive && !isPaused && (ambientEnabled || toneEnabled);
+    if (shouldLoopsBePlayingRef.current) {
+      audioInterruptedRef.current = false;
+    }
+  }, [ambientEnabled, isPaused, isSessionActive, toneEnabled]);
+
+  // Ambient loop. Keep loaded tracks alive while the session is active; mix
+  // changes only fade volumes instead of rebuilding the whole sound graph.
   useEffect(() => {
     let cancelled = false;
+    const generation = ++ambientGenerationRef.current;
 
     (async () => {
-      if (!ambientEnabled || !isSessionActive || isPaused) {
+      if (!ambientEnabled || !isSessionActive) {
         await unloadAmbient();
         return;
       }
       await ensureAudioMode();
       if (cancelled) return;
-      await unloadAmbient();
-      if (cancelled) return;
       try {
-        const activeMix = activeAmbientTracks(ambientMix);
-        for (const id of activeMix) {
-          const module = AMBIENT_SOUND_MODULES[id];
-          const volume = AMBIENT_SOUND_VOLUMES[id] * (ambientMix[id] ?? 0);
-          const { sound } = await Audio.Sound.createAsync(
-            module,
-            { isLooping: true, volume },
-            (status: AVPlaybackStatus) => {
-              if (!status.isLoaded && 'error' in status && status.error) {
-                console.warn('Ambient audio error', status.error);
-              }
-          }
-          );
-          if (cancelled) {
-            await sound.unloadAsync();
-            return;
-          }
-          ambientRefs.current[id] = sound;
-          await sound.playAsync();
+        await ensureAmbientSounds(ambientRefs.current, (_id, status) => handleUnexpectedAudioStop(status));
+        if (cancelled || generation !== ambientGenerationRef.current) return;
+        await applyAmbientMix(ambientRefs.current, ambientMix);
+        if (cancelled || generation !== ambientGenerationRef.current) return;
+        if (isPaused) {
+          await pauseAmbientSounds(ambientRefs.current);
+        } else {
+          await playAmbientSounds(ambientRefs.current);
         }
-        // No active mix tracks => stay silent in ambient mode.
       } catch (e) {
         console.warn('Failed to start ambient audio', e);
       }
@@ -126,16 +134,15 @@ export function useBreathAudio(
 
     return () => {
       cancelled = true;
-      void unloadAmbient();
     };
-  }, [ambientEnabled, ambientSoundscape, ambientMix, isSessionActive, isPaused, unloadAmbient]);
+  }, [ambientEnabled, ambientMix, isSessionActive, isPaused, unloadAmbient, handleUnexpectedAudioStop]);
 
   // Tone generator loop
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
-      if (!toneEnabled || !isSessionActive || isPaused) {
+      if (!toneEnabled || !isSessionActive) {
         await unloadTone();
         return;
       }
@@ -148,7 +155,8 @@ export function useBreathAudio(
         if (cancelled) return;
         const { sound } = await Audio.Sound.createAsync(
           { uri: fileUri },
-          { isLooping: true, volume: toneVolume }
+          { isLooping: true, volume: toneVolume },
+          handleUnexpectedAudioStop
         );
         if (cancelled) {
           await sound.unloadAsync();
@@ -165,7 +173,7 @@ export function useBreathAudio(
       cancelled = true;
       void unloadTone();
     };
-  }, [toneEnabled, toneFrequency, isSessionActive, isPaused, unloadTone]);
+  }, [toneEnabled, toneFrequency, isSessionActive, unloadTone, handleUnexpectedAudioStop]);
 
   // Live-update tone volume without restarting
   useEffect(() => {

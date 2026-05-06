@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Image } from 'react-native';
-import { useRouter } from 'expo-router';
+import { View, Text, Pressable, StyleSheet, Image, ScrollView } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Colors } from '@/constants/colors';
@@ -17,13 +17,17 @@ const GOALS = [
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const { mode } = useLocalSearchParams<{ mode?: string }>();
   const insets = useSafeAreaInsets();
-  const { completeOnboarding } = useAppContext();
+  const { state, completeOnboarding } = useAppContext();
+  const isRetake = mode === 'retake';
   const [step, setStep] = useState(0);
-  const [selectedGoal, setSelectedGoal] = useState<'calm' | 'focus' | 'energy' | null>(null);
-  const [stressLevel, setStressLevel] = useState(3);
-  const [sleepQuality, setSleepQuality] = useState(3);
-  const [focusNeed, setFocusNeed] = useState(3);
+  const [selectedGoal, setSelectedGoal] = useState<'calm' | 'focus' | 'energy' | null>(
+    () => state.userGoal ?? null
+  );
+  const [stressLevel, setStressLevel] = useState(() => state.onboardingProfile?.stressLevel ?? 3);
+  const [sleepQuality, setSleepQuality] = useState(() => state.onboardingProfile?.sleepQuality ?? 3);
+  const [focusNeed, setFocusNeed] = useState(() => state.onboardingProfile?.focusNeed ?? 3);
 
   const computedGoal: 'calm' | 'focus' | 'energy' = (() => {
     if (stressLevel >= 4 || sleepQuality <= 2) return 'calm';
@@ -32,8 +36,9 @@ export default function OnboardingScreen() {
   })();
   const finalGoal = selectedGoal ?? computedGoal;
   const starterProgramId: ProgramId = (() => {
-    if (sleepQuality <= 2) return 'sleep3';
+    if (finalGoal === 'energy') return 'energy3';
     if (finalGoal === 'focus') return 'focus3';
+    if (sleepQuality <= 2) return 'sleep3';
     return 'calm3';
   })();
 
@@ -43,21 +48,30 @@ export default function OnboardingScreen() {
       profile: { stressLevel, sleepQuality, focusNeed },
       starterProgramId,
     });
-    router.replace('/');
+    router.replace(isRetake ? '/settings' : '/');
   };
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }]}>
+    <ScrollView
+      style={styles.root}
+      contentContainerStyle={[
+        styles.rootContent,
+        { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 },
+      ]}
+      showsVerticalScrollIndicator={false}
+    >
       {step === 0 && (
         <Animated.View entering={FadeIn.duration(500)} style={styles.section}>
-          <Text style={styles.kicker}>Velkommen</Text>
+          <Text style={styles.kicker}>{isRetake ? 'Oppdater mål' : 'Velkommen'}</Text>
           <Image source={require('@/assets/logo-transparent.png')} style={styles.logoFace} />
           <View style={styles.titleRow}>
             <Text style={styles.titleBio}>bio</Text>
             <Text style={styles.titleHead}>head</Text>
           </View>
           <Text style={styles.body}>
-            Korte, guidede pusteøvelser for ro, fokus og energi – når du trenger det.
+            {isRetake
+              ? 'Svarene dine oppdaterer forsiden og anbefalingene. Historikk, streak og favoritter beholdes.'
+              : 'Korte, guidede pusteøvelser for ro, fokus og energi – når du trenger det.'}
           </Text>
           <HapticButton title="Fortsett" onPress={() => setStep(1)} style={styles.cta} />
         </Animated.View>
@@ -67,7 +81,7 @@ export default function OnboardingScreen() {
         <Animated.View entering={FadeInDown.duration(450)} style={styles.section}>
           <Text style={styles.kicker}>Steg 1 av 3</Text>
           <Text style={styles.title}>Hva trenger du mest?</Text>
-          <Text style={styles.body}>Vi tilpasser forsiden etter valget ditt (du kan endre det senere).</Text>
+          <Text style={styles.body}>Vi tilpasser forsiden etter valget ditt. Du kan endre målet i Innstillinger.</Text>
           <View style={styles.goalList}>
             {GOALS.map((g) => {
               const active = selectedGoal === g.id;
@@ -96,7 +110,7 @@ export default function OnboardingScreen() {
         <Animated.View entering={FadeInDown.duration(450)} style={styles.section}>
           <Text style={styles.kicker}>Steg 2 av 3</Text>
           <Text style={styles.title}>Rask stress-sjekk</Text>
-          <Text style={styles.body}>Dette hjelper oss foresla rett oppstartsplan for deg.</Text>
+          <Text style={styles.body}>Dette hjelper oss foreslå rett oppstartsplan for deg.</Text>
           <View style={styles.quizGroup}>
             <Text style={styles.quizLabel}>Stress nå (1-5)</Text>
             <View style={styles.scaleRow}>
@@ -150,20 +164,27 @@ export default function OnboardingScreen() {
           <Text style={styles.kicker}>Steg 3 av 3</Text>
           <Text style={styles.title}>Du er klar</Text>
           <Text style={styles.body}>
-            Startforslag: <Text style={styles.recoInline}>{finalGoal}</Text> + program{' '}
+            {isRetake ? 'Nytt mål' : 'Startforslag'}:{' '}
+            <Text style={styles.recoInline}>{finalGoal}</Text> + program{' '}
             <Text style={styles.recoInline}>{starterProgramId}</Text>.
             {'\n\n'}
-            Du starter med en 3-dagers kickstart for å etablere vane raskt.
+            {isRetake
+              ? 'Målet oppdateres uten at historikk, streak eller favoritter slettes.'
+              : 'Du starter med en 3-dagers kickstart for å etablere vane raskt.'}
             {'\n\n'}
             Finn et rolig øyeblikk, velg en øvelse, og følg sirkelen. Alt lagres lokalt på enheten.
           </Text>
           <Text style={styles.disclaimer}>
             Biohead erstatter ikke profesjonell helsehjelp ved behov for behandling eller råd.
           </Text>
-          <HapticButton title="Start Biohead" onPress={finish} style={styles.cta} />
+          <HapticButton
+            title={isRetake ? 'Oppdater Biohead' : 'Start Biohead'}
+            onPress={finish}
+            style={styles.cta}
+          />
         </Animated.View>
       )}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -171,6 +192,9 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  rootContent: {
+    flexGrow: 1,
     paddingHorizontal: 24,
     justifyContent: 'center',
   },

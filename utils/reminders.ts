@@ -7,6 +7,7 @@ import { getToday } from '@/utils/formatTime';
 const ANDROID_CHANNEL_ID = 'biohead-daily';
 const REMINDER_CATEGORY_ID = 'biohead-reminder-actions';
 const DAILY_REMINDER_ID_PREFIX = 'biohead-daily-';
+const SNOOZE_REMINDER_ID = 'biohead-snooze-active';
 const ACTION_SNOOZE_30 = 'snooze-30-min';
 const ACTION_SKIP_TODAY = 'skip-today';
 const SKIP_TODAY_KEY = '@biohead_reminder_skip_today';
@@ -28,11 +29,12 @@ async function shouldSkipToday(): Promise<boolean> {
 Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
     const kind = notification.request.content.data?.reminderKind;
-    const hideDailyReminder = kind === 'daily' && (await shouldSkipToday());
+    const hideReminder =
+      (kind === 'daily' || kind === 'snooze') && (await shouldSkipToday());
     return {
-      shouldShowBanner: !hideDailyReminder,
-      shouldShowList: !hideDailyReminder,
-      shouldPlaySound: !hideDailyReminder,
+      shouldShowBanner: !hideReminder,
+      shouldShowList: !hideReminder,
+      shouldPlaySound: !hideReminder,
       shouldSetBadge: false,
     };
   },
@@ -62,8 +64,10 @@ async function ensureReminderCategory(): Promise<void> {
 }
 
 async function scheduleSnoozeReminder(minutes: number): Promise<void> {
+  await cancelSnoozeReminder();
   const triggerAt = new Date(Date.now() + minutes * 60 * 1000);
   await Notifications.scheduleNotificationAsync({
+    identifier: SNOOZE_REMINDER_ID,
     content: {
       title: 'Biohead',
       body: 'Tid for en rolig pustepause.',
@@ -79,6 +83,14 @@ async function scheduleSnoozeReminder(minutes: number): Promise<void> {
   });
 }
 
+async function cancelSnoozeReminder(): Promise<void> {
+  try {
+    await Notifications.cancelScheduledNotificationAsync(SNOOZE_REMINDER_ID);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function initReminderActions(): void {
   if (reminderActionsInitialized) return;
   reminderActionsInitialized = true;
@@ -92,6 +104,7 @@ export function initReminderActions(): void {
     }
     if (actionId === ACTION_SKIP_TODAY) {
       await AsyncStorage.setItem(SKIP_TODAY_KEY, getLocalDateKey());
+      await cancelSnoozeReminder();
     }
   });
 }
@@ -171,8 +184,14 @@ export async function syncDailyReminder(
   }
 ): Promise<void> {
   await cancelBioheadDailyReminders();
+  if (!enabled || (options?.skipIfDoneToday && options.lastSessionDate === getToday())) {
+    await cancelSnoozeReminder();
+  }
   if (!enabled) return;
-  if (await shouldSkipToday()) return;
+  if (await shouldSkipToday()) {
+    await cancelSnoozeReminder();
+    return;
+  }
   if (options?.skipIfDoneToday && options.lastSessionDate === getToday()) return;
 
   const granted = await requestNotificationPermission();

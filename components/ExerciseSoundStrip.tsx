@@ -18,6 +18,8 @@ export interface ExerciseSoundStripProps {
   onOpenMixer: () => void;
   /** F.eks. «Lyd under økt» på øktskjerm, «Lyd før neste økt» på øvelsesside. */
   kickerText: string;
+  /** Brukes i øktmodus, der pustesirkelen må eie skjermens midtpunkt. */
+  compact?: boolean;
 }
 
 export function ExerciseSoundStrip({
@@ -28,6 +30,7 @@ export function ExerciseSoundStrip({
   onToggleTone,
   onOpenMixer,
   kickerText,
+  compact = false,
 }: ExerciseSoundStripProps) {
   const soundCycleA11yLabel = useMemo(
     () => buildSoundCycleAccessibilityLabel(soundMode, toneEnabled, toneFrequency),
@@ -35,54 +38,71 @@ export function ExerciseSoundStrip({
   );
 
   return (
-    <View style={[styles.soundStrip, soundMode !== 'off' && styles.soundStripActive]}>
+    <View
+      style={[
+        styles.soundStrip,
+        compact && styles.soundStripCompact,
+        soundMode !== 'off' && styles.soundStripActive,
+      ]}
+    >
       <Pressable
         onPress={onCycleSoundMode}
-        style={styles.soundStripMain}
+        style={[styles.soundStripMain, compact && styles.soundStripMainCompact]}
         accessibilityRole="button"
         accessibilityLabel={soundCycleA11yLabel}
         accessibilityHint="Bytter mellom av, naturlyd, signaler og miks"
       >
-        <Text style={styles.soundStripEmoji} accessibilityElementsHidden>
+        <Text
+          style={[styles.soundStripEmoji, compact && styles.soundStripEmojiCompact]}
+          accessibilityElementsHidden
+        >
           {SOUND_MODE_LABEL[soundMode]}
         </Text>
         <View style={styles.soundStripTextBlock}>
-          <Text style={styles.soundStripKicker}>{kickerText}</Text>
-          <Text style={styles.soundStripTitle} numberOfLines={2}>
-            {SOUND_MODE_TITLE[soundMode]}
+          {!compact ? <Text style={styles.soundStripKicker}>{kickerText}</Text> : null}
+          <Text style={[styles.soundStripTitle, compact && styles.soundStripTitleCompact]} numberOfLines={1}>
+            {compact ? `Lyd: ${SOUND_MODE_TITLE[soundMode]}` : SOUND_MODE_TITLE[soundMode]}
           </Text>
-          {toneEnabled ? (
+          {toneEnabled && !compact ? (
             <Text style={styles.soundToneMeta} numberOfLines={1}>
               Droningtone ~{Math.round(toneFrequency)} Hz
             </Text>
           ) : null}
-          <Text style={styles.soundStripHint}>Trykk her for neste modus</Text>
+          {!compact ? <Text style={styles.soundStripHint}>Trykk her for neste modus</Text> : null}
         </View>
       </Pressable>
-      <View style={styles.soundStripActions}>
+      <View style={[styles.soundStripActions, compact && styles.soundStripActionsCompact]}>
         <Pressable
           onPress={onToggleTone}
-          style={[styles.soundSideBtn, toneEnabled && styles.soundSideBtnOn]}
+          style={[styles.soundSideBtn, compact && styles.soundSideBtnCompact, toneEnabled && styles.soundSideBtnOn]}
           accessibilityRole="button"
           accessibilityLabel={
             toneEnabled ? 'Slå av droningtone under økt' : 'Slå på droningtone under økt'
           }
           hitSlop={6}
         >
-          <Text style={[styles.soundSideBtnText, toneEnabled && styles.soundSideBtnTextOn]}>
-            {toneEnabled ? 'Tone på' : 'Tone av'}
+          <Text
+            style={[
+              styles.soundSideBtnText,
+              compact && styles.soundSideBtnTextCompact,
+              toneEnabled && styles.soundSideBtnTextOn,
+            ]}
+          >
+            {compact ? 'Tone' : toneEnabled ? 'Tone på' : 'Tone av'}
           </Text>
         </Pressable>
         <Pressable
           onPress={onOpenMixer}
-          style={styles.soundSideBtn}
+          style={[styles.soundSideBtn, compact && styles.soundSideBtnCompact]}
           accessibilityRole="button"
           accessibilityLabel="Åpne lydmikser"
           accessibilityHint="Juster volum, naturlyd-miks og tone"
           hitSlop={6}
         >
-          <Text style={styles.soundSideBtnText}>Juster</Text>
-          <Text style={styles.soundSideBtnSub}>lyd</Text>
+          <Text style={[styles.soundSideBtnText, compact && styles.soundSideBtnTextCompact]}>
+            {compact ? 'Miks' : 'Juster'}
+          </Text>
+          {!compact ? <Text style={styles.soundSideBtnSub}>lyd</Text> : null}
         </Pressable>
       </View>
     </View>
@@ -102,6 +122,13 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(14,32,37,0.08)',
     width: '100%',
   },
+  soundStripCompact: {
+    gap: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    minHeight: 48,
+  },
   soundStripActive: {
     borderColor: `${Colors.greenAccent}44`,
     backgroundColor: `${Colors.greenAccent}10`,
@@ -113,9 +140,16 @@ const styles = StyleSheet.create({
     gap: 10,
     minWidth: 0,
   },
+  soundStripMainCompact: {
+    gap: 8,
+  },
   soundStripEmoji: {
     fontSize: 26,
     lineHeight: 30,
+  },
+  soundStripEmojiCompact: {
+    fontSize: 19,
+    lineHeight: 22,
   },
   soundStripTextBlock: {
     flex: 1,
@@ -135,6 +169,10 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     lineHeight: 19,
   },
+  soundStripTitleCompact: {
+    fontSize: Typography.sizes.xs,
+    lineHeight: 16,
+  },
   soundToneMeta: {
     fontFamily: Typography.fontFamily.medium,
     fontSize: Typography.sizes.xs,
@@ -151,6 +189,10 @@ const styles = StyleSheet.create({
     gap: 8,
     alignItems: 'stretch',
   },
+  soundStripActionsCompact: {
+    flexDirection: 'row',
+    gap: 6,
+  },
   soundSideBtn: {
     paddingVertical: 8,
     paddingHorizontal: 10,
@@ -161,6 +203,12 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(14,32,37,0.1)',
     minWidth: 72,
   },
+  soundSideBtnCompact: {
+    minWidth: 50,
+    paddingVertical: 7,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+  },
   soundSideBtnOn: {
     borderColor: `${Colors.greenAccent}55`,
     backgroundColor: `${Colors.greenAccent}18`,
@@ -169,6 +217,9 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.semibold,
     fontSize: Typography.sizes.xs,
     color: Colors.textPrimary,
+  },
+  soundSideBtnTextCompact: {
+    fontSize: 10,
   },
   soundSideBtnTextOn: {
     color: Colors.greenAccent,

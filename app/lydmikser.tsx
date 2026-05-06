@@ -12,11 +12,15 @@ import { ensureToneFile, TONE_PRESETS } from '@/utils/toneGenerator';
 import { ensureAudioMode } from '@/utils/audioMode';
 import {
   type AmbientSoundscape,
-  AMBIENT_SOUND_MODULES,
-  AMBIENT_SOUND_VOLUMES,
   AMBIENT_SOUNDSCAPE_IDS,
   AMBIENT_SOUNDSCAPE_OPTIONS,
 } from '@/constants/ambientSounds';
+import {
+  applyAmbientMix,
+  ensureAmbientSounds,
+  playAmbientSounds,
+  unloadAmbientSounds,
+} from '@/utils/ambientAudio';
 
 export default function SoundMixerScreen() {
   const router = useRouter();
@@ -35,6 +39,7 @@ export default function SoundMixerScreen() {
   const previewRefs = useRef<Partial<Record<AmbientSoundscape, Audio.Sound>>>({});
   const toneRef = useRef<Audio.Sound | null>(null);
   const toneRestartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previewGenerationRef = useRef(0);
 
   const isSoloMix = useCallback((mix: Record<AmbientSoundscape, number>, target: AmbientSoundscape): boolean => {
     return AMBIENT_SOUNDSCAPE_IDS.every((id) =>
@@ -43,22 +48,7 @@ export default function SoundMixerScreen() {
   }, []);
 
   const stopPreview = useCallback(async () => {
-    const sounds = Object.values(previewRefs.current).filter(
-      (sound): sound is Audio.Sound => sound != null
-    );
-    previewRefs.current = {};
-    for (const sound of sounds) {
-      try {
-        await sound.stopAsync();
-      } catch (e) {
-        if (__DEV__) console.warn('[lydmikser] stopAsync preview failed', e);
-      }
-      try {
-        await sound.unloadAsync();
-      } catch (e) {
-        if (__DEV__) console.warn('[lydmikser] unloadAsync preview failed', e);
-      }
-    }
+    await unloadAmbientSounds(previewRefs.current);
   }, []);
 
   const stopTonePreview = useCallback(async () => {
@@ -123,6 +113,7 @@ export default function SoundMixerScreen() {
 
   useEffect(() => {
     let cancelled = false;
+    const generation = ++previewGenerationRef.current;
     const runPreview = async () => {
       if (!isPreviewing) {
         await stopPreview();
@@ -132,21 +123,11 @@ export default function SoundMixerScreen() {
       try {
         await ensureAudioMode();
         if (cancelled) return;
-        await stopPreview();
-        if (cancelled) return;
-        const activeMix = AMBIENT_SOUNDSCAPE_IDS.filter((id) => (state.ambientMix[id] ?? 0) > 0.01);
-        for (const id of activeMix) {
-          const { sound } = await Audio.Sound.createAsync(AMBIENT_SOUND_MODULES[id], {
-            isLooping: true,
-            volume: AMBIENT_SOUND_VOLUMES[id] * (state.ambientMix[id] ?? 1),
-          });
-          if (cancelled) {
-            await sound.unloadAsync();
-            return;
-          }
-          previewRefs.current[id] = sound;
-          await sound.playAsync();
-        }
+        await ensureAmbientSounds(previewRefs.current);
+        if (cancelled || generation !== previewGenerationRef.current) return;
+        await applyAmbientMix(previewRefs.current, state.ambientMix);
+        if (cancelled || generation !== previewGenerationRef.current) return;
+        await playAmbientSounds(previewRefs.current);
       } catch (error) {
         if (__DEV__) {
           console.warn('Ambient preview failed', error);
