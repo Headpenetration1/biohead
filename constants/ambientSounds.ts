@@ -23,12 +23,12 @@ export const AMBIENT_SOUNDSCAPE_IDS: AmbientSoundscape[] = [
 
 /** Metro requires static require() per file */
 export const AMBIENT_SOUND_MODULES: Record<AmbientSoundscape, number> = {
-  neutral: require('@/assets/sounds/ambient_neutral.wav'),
+  neutral: require('@/assets/sounds/ambient_neutral.mp3'),
   wind: require('@/assets/sounds/ambient_wind.wav'),
   birds: require('@/assets/sounds/ambient_birds.wav'),
   forest: require('@/assets/sounds/ambient_forest.wav'),
   rain: require('@/assets/sounds/ambient_rain.wav'),
-  waves: require('@/assets/sounds/ambient_waves.wav'),
+  waves: require('@/assets/sounds/ambient_waves.mp3'),
 };
 
 /** Suggested playback volume per soundscape (0–1) */
