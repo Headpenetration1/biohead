@@ -4,6 +4,25 @@ export function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+export function formatDurationShort(seconds: number): string {
+  const safeSeconds = Math.max(0, Math.round(seconds));
+  if (safeSeconds < 60) return `${safeSeconds} s`;
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainingSeconds = safeSeconds % 60;
+  if (remainingSeconds === 0) return `${minutes} min`;
+  return `${minutes} min ${remainingSeconds} s`;
+}
+
+export function formatDurationAccessible(seconds: number): string {
+  const safeSeconds = Math.max(0, Math.round(seconds));
+  if (safeSeconds < 60) return `${safeSeconds} sekunder`;
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainingSeconds = safeSeconds % 60;
+  const minuteText = `${minutes} minutt${minutes === 1 ? '' : 'er'}`;
+  if (remainingSeconds === 0) return minuteText;
+  return `${minuteText} og ${remainingSeconds} sekunder`;
+}
+
 // Returns YYYY-MM-DD in the device's local timezone. We avoid toISOString() here
 // because it converts to UTC, which can make a session logged just before
 // midnight locally appear on the "next" day and break streak/history grouping

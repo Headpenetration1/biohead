@@ -101,17 +101,17 @@ export default function HapticButton({
 
 const styles = StyleSheet.create({
   button: {
-    paddingVertical: 18, // Slightly taller
+    paddingVertical: 18,
     paddingHorizontal: 24,
-    borderRadius: 20, // Sleeker pill/rounded rect
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1, // Add border to match glassy layout
+    borderWidth: 1,
     borderColor: 'transparent',
   },
   label: {
     fontSize: Typography.sizes.base,
-    letterSpacing: 0.8, // More premium letter spacing
-    textTransform: 'uppercase', // Bold, actionable look
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
 });

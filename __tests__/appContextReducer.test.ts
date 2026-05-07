@@ -7,6 +7,14 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   },
 }));
 
+jest.mock('@/utils/reminders', () => ({
+  syncDailyReminder: jest.fn(),
+}));
+
+jest.mock('@/utils/widgetBridge', () => ({
+  syncWidgetSnapshot: jest.fn(),
+}));
+
 import { reducer, baseInitial, type AppState } from '@/context/AppContext';
 import { getToday } from '@/utils/formatTime';
 

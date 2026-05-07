@@ -46,7 +46,7 @@ async function ensureAndroidChannel(): Promise<void> {
     name: 'Daglig påminnelse',
     importance: Notifications.AndroidImportance.DEFAULT,
     vibrationPattern: [0, 250, 250, 250],
-    lightColor: '#46917c',
+    lightColor: '#2f6f61',
   });
 }
 

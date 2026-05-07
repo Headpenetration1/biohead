@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { Audio } from 'expo-av';
 import Slider from '@react-native-community/slider';
+import { Bell, Leaf, Music, Volume2 } from 'lucide-react-native';
 import { Colors } from '@/constants/colors';
 import { Typography } from '@/constants/typography';
 import { useAppContext } from '@/context/AppContext';
@@ -333,13 +334,16 @@ export default function SoundMixerScreen() {
       </Animated.View>
 
       <View style={styles.titleRow}>
-        <Text style={styles.titleIcon}>🔊</Text>
+        <Volume2 size={28} color={Colors.textPrimary} strokeWidth={1.8} />
         <Text style={styles.title}>Lydmikser</Text>
       </View>
       <View style={styles.card}>
         <View style={styles.sessionToggleRow}>
           <View style={styles.rowText}>
-            <Text style={styles.rowTitle}>🔔 Signaler</Text>
+            <View style={styles.rowTitleWithIcon}>
+              <Bell size={16} color={Colors.textPrimary} strokeWidth={1.8} />
+              <Text style={styles.rowTitle}>Signaler</Text>
+            </View>
             <Text style={styles.rowSub}>Korte toner ved fasebytte</Text>
           </View>
           <Pressable
@@ -365,7 +369,10 @@ export default function SoundMixerScreen() {
       <View style={styles.card}>
         <View style={styles.sessionToggleRow}>
           <View style={styles.rowText}>
-            <Text style={styles.rowTitle}>🌿 Natur / ambient</Text>
+            <View style={styles.rowTitleWithIcon}>
+              <Leaf size={16} color={Colors.textPrimary} strokeWidth={1.8} />
+              <Text style={styles.rowTitle}>Natur / ambient</Text>
+            </View>
             <Text style={styles.rowSub}>Bakgrunnslyder under pusteøvelser</Text>
           </View>
           <Pressable
@@ -541,7 +548,10 @@ export default function SoundMixerScreen() {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.presetLabel}>🎵 Tone generator (beta)</Text>
+        <View style={styles.presetLabelRow}>
+          <Music size={15} color={Colors.textMuted} strokeWidth={1.8} />
+          <Text style={styles.presetLabelText}>Tonegenerator (beta)</Text>
+        </View>
         {toneGeneratorSection}
       </View>
     </ScrollView>
@@ -574,16 +584,12 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.bold,
     fontSize: Typography.sizes['3xl'],
     color: Colors.textPrimary,
-    marginBottom: 20,
     letterSpacing: -0.5,
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-  },
-  titleIcon: {
-    fontSize: 28,
     marginBottom: 20,
   },
   card: {
@@ -604,6 +610,11 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.bold,
     fontSize: Typography.sizes.base,
     color: Colors.textPrimary,
+  },
+  rowTitleWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   rowSub: {
     fontFamily: Typography.fontFamily.regular,
@@ -654,6 +665,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 10,
+  },
+  presetLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 10,
+  },
+  presetLabelText: {
+    fontFamily: Typography.fontFamily.medium,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textMuted,
   },
   soundscapeList: { gap: 10, paddingHorizontal: 16, paddingBottom: 14 },
   soundscapeChip: {

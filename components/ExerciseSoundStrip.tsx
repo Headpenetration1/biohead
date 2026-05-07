@@ -1,10 +1,10 @@
 import React, { useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { Bell, Leaf, Music, VolumeX } from 'lucide-react-native';
 import { Colors } from '@/constants/colors';
 import { Typography } from '@/constants/typography';
 import type { SoundMode } from '@/utils/storage';
 import {
-  SOUND_MODE_LABEL,
   SOUND_MODE_TITLE,
   buildSoundCycleAccessibilityLabel,
 } from '@/constants/sessionSoundUi';
@@ -22,6 +22,16 @@ export interface ExerciseSoundStripProps {
   compact?: boolean;
 }
 
+const SOUND_MODE_ICON = {
+  off: VolumeX,
+  ambient: Leaf,
+  cues: Bell,
+  mix: Music,
+} satisfies Record<
+  SoundMode,
+  React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>
+>;
+
 export function ExerciseSoundStrip({
   soundMode,
   toneEnabled,
@@ -36,6 +46,7 @@ export function ExerciseSoundStrip({
     () => buildSoundCycleAccessibilityLabel(soundMode, toneEnabled, toneFrequency),
     [soundMode, toneEnabled, toneFrequency]
   );
+  const SoundModeIcon = SOUND_MODE_ICON[soundMode];
 
   return (
     <View
@@ -52,12 +63,16 @@ export function ExerciseSoundStrip({
         accessibilityLabel={soundCycleA11yLabel}
         accessibilityHint="Bytter mellom av, naturlyd, signaler og miks"
       >
-        <Text
-          style={[styles.soundStripEmoji, compact && styles.soundStripEmojiCompact]}
-          accessibilityElementsHidden
+        <View
+          style={[styles.soundStripIcon, compact && styles.soundStripIconCompact]}
+          importantForAccessibility="no-hide-descendants"
         >
-          {SOUND_MODE_LABEL[soundMode]}
-        </Text>
+          <SoundModeIcon
+            size={compact ? 17 : 23}
+            color={soundMode === 'off' ? Colors.textMuted : Colors.textPrimary}
+            strokeWidth={1.8}
+          />
+        </View>
         <View style={styles.soundStripTextBlock}>
           {!compact ? <Text style={styles.soundStripKicker}>{kickerText}</Text> : null}
           <Text style={[styles.soundStripTitle, compact && styles.soundStripTitleCompact]} numberOfLines={1}>
@@ -143,13 +158,15 @@ const styles = StyleSheet.create({
   soundStripMainCompact: {
     gap: 8,
   },
-  soundStripEmoji: {
-    fontSize: 26,
-    lineHeight: 30,
+  soundStripIcon: {
+    width: 30,
+    height: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  soundStripEmojiCompact: {
-    fontSize: 19,
-    lineHeight: 22,
+  soundStripIconCompact: {
+    width: 22,
+    height: 22,
   },
   soundStripTextBlock: {
     flex: 1,

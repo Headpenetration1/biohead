@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { View, Text, ScrollView, StyleSheet, Image, Pressable, Share, Alert, ActivityIndicator } from 'react-native';
 import { useRouter, Redirect, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { History, Settings, Volume2 } from 'lucide-react-native';
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -26,6 +27,7 @@ import {
   getWeekSessionCount,
   getWeekMinutes,
 } from '@/utils/progression';
+import { formatDurationAccessible, formatDurationShort } from '@/utils/formatTime';
 import ExerciseCard from '@/components/ExerciseCard';
 import StreakBadge from '@/components/StreakBadge';
 
@@ -193,7 +195,7 @@ export default function HomeScreen() {
             accessibilityRole="button"
             accessibilityLabel="Innstillinger"
           >
-            <Text style={styles.headerIcon}>⚙</Text>
+            <Settings size={21} color={Colors.textSecondary} strokeWidth={1.8} />
           </Pressable>
           <StreakBadge count={state.currentStreak} />
           <Pressable
@@ -202,7 +204,7 @@ export default function HomeScreen() {
             accessibilityRole="button"
             accessibilityLabel="Historikk"
           >
-            <Text style={styles.headerIcon}>◇</Text>
+            <History size={21} color={Colors.textSecondary} strokeWidth={1.8} />
           </Pressable>
         </Animated.View>
 
@@ -249,7 +251,7 @@ export default function HomeScreen() {
               <Text style={styles.todayPlanSub}>
                 {exercises.find((entry) => entry.id === activeProgramDay.exerciseId)?.title ?? activeProgramDay.exerciseId}
                 {' · '}
-                {activeProgramDay.duration} sek
+                {formatDurationShort(activeProgramDay.duration)}
               </Text>
               <View style={styles.todayPlanActions}>
                 <Pressable
@@ -270,7 +272,7 @@ export default function HomeScreen() {
                   }
                   style={styles.todayPlanPrimaryBtn}
                   accessibilityRole="button"
-                  accessibilityLabel={`Start dag ${activeProgramDay.day} i programmet, ${activeProgramDay.duration} sekunder`}
+                  accessibilityLabel={`Start dag ${activeProgramDay.day} i programmet, ${formatDurationAccessible(activeProgramDay.duration)}`}
                 >
                   <Text style={styles.todayPlanPrimaryBtnText}>Start dagens øvelse</Text>
                 </Pressable>
@@ -292,7 +294,10 @@ export default function HomeScreen() {
             accessibilityRole="button"
             accessibilityLabel="Åpne Lydmikser"
           >
-            <Text style={styles.soundQuickTitle}>🔊 Lydmikser</Text>
+            <View style={styles.soundQuickTitleRow}>
+              <Volume2 size={18} color={Colors.textPrimary} strokeWidth={1.8} />
+              <Text style={styles.soundQuickTitle}>Lydmikser</Text>
+            </View>
             <Text style={styles.soundQuickSub}>Juster miks, forhåndslytt og bruk lagrede lydprofiler</Text>
           </Pressable>
         </Animated.View>
@@ -398,7 +403,7 @@ export default function HomeScreen() {
                   >
                     <Text style={styles.savedName}>{setup.name}</Text>
                     <Text style={styles.savedSub}>
-                      {setup.exercise.title} · {setup.duration}s
+                      {setup.exercise.title} · {formatDurationShort(setup.duration)}
                       {setup.stressLevel != null ? ` · stress ${setup.stressLevel}/5` : ''}
                     </Text>
                   </Pressable>
@@ -589,10 +594,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(14,32,37,0.06)',
   },
-  headerIcon: {
-    fontSize: 20,
-    color: Colors.textSecondary,
-  },
   logoContainer: {
     alignItems: 'center',
     paddingVertical: 28,
@@ -640,11 +641,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(14,32,37,0.08)',
   },
+  soundQuickTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
   soundQuickTitle: {
     fontFamily: Typography.fontFamily.bold,
     fontSize: Typography.sizes.base,
     color: Colors.textPrimary,
-    marginBottom: 4,
   },
   soundQuickSub: {
     fontFamily: Typography.fontFamily.regular,

@@ -2,13 +2,6 @@ import type { SoundMode } from '@/utils/storage';
 
 export const SOUND_MODE_CYCLE: SoundMode[] = ['off', 'ambient', 'cues', 'mix'];
 
-export const SOUND_MODE_LABEL: Record<SoundMode, string> = {
-  off: '🔇',
-  cues: '🔔',
-  ambient: '🌿',
-  mix: '🎵',
-};
-
 /** Korte, lesbare norsk-etiketter (synlig på økt- og øvelsesside). */
 export const SOUND_MODE_TITLE: Record<SoundMode, string> = {
   off: 'Av',

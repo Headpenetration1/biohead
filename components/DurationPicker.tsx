@@ -4,6 +4,7 @@ import { Colors } from '@/constants/colors';
 import { Typography } from '@/constants/typography';
 import { DURATION_OPTIONS } from '@/constants/exercises';
 import { useHaptics } from '@/hooks/useHaptics';
+import { formatDurationAccessible, formatDurationShort } from '@/utils/formatTime';
 
 interface DurationPickerProps {
   value: number;
@@ -32,11 +33,7 @@ export default function DurationPicker({
               onChange(d);
             }}
             accessibilityRole="radio"
-            accessibilityLabel={
-              d >= 60
-                ? `${d / 60} minutt${d >= 120 ? 'er' : ''}`
-                : `${d} sekunder`
-            }
+            accessibilityLabel={formatDurationAccessible(d)}
             accessibilityState={{ selected: active }}
             style={[
               styles.option,
@@ -54,7 +51,7 @@ export default function DurationPicker({
                 },
               ]}
             >
-              {d}s
+              {formatDurationShort(d)}
             </Text>
           </Pressable>
         );

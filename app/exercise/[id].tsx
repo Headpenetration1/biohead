@@ -18,6 +18,7 @@ import { useHaptics } from '@/hooks/useHaptics';
 import { ExerciseSoundStrip } from '@/components/ExerciseSoundStrip';
 import { getNextSoundMode } from '@/constants/sessionSoundUi';
 import { getFreshStressCheck } from '@/utils/stressCheck';
+import { formatDurationShort } from '@/utils/formatTime';
 
 export default function ExerciseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -222,7 +223,7 @@ export default function ExerciseDetailScreen() {
               exerciseId: exercise.id,
               duration,
               stressLevel: stressBefore,
-              name: `${exercise.title} ${duration}s`,
+              name: `${exercise.title} ${formatDurationShort(duration)}`,
             });
             Alert.alert('Lagret', 'Oppsettet er lagret under "Lagrede økter" på hjem.');
           }}
@@ -242,7 +243,7 @@ export default function ExerciseDetailScreen() {
               style={[styles.patternChip, { backgroundColor: `${exercise.glowColor}12` }]}
             >
               <Text style={[styles.patternDuration, { color: exercise.glowColor }]}>
-                {step.duration}s
+                {formatDurationShort(step.duration)}
               </Text>
               <Text style={styles.patternLabel}>{step.label.toLowerCase()}</Text>
             </View>

@@ -3,9 +3,9 @@ export const Colors = {
   background: '#FFF9ED',
   backgroundAlt: '#FFF9ED',
   cardBackground: 'rgba(14, 32, 37, 0.04)',
-  greenAccent: '#46917c',
-  greenAccentHover: '#5ca08d',
-  greenAccentSoft: 'rgba(70, 145, 124, 0.18)',
+  greenAccent: '#2f6f61',
+  greenAccentHover: '#3d7f70',
+  greenAccentSoft: 'rgba(47, 111, 97, 0.18)',
   deepBlue: '#1e495d',
   lightBeige: '#FFF9ED',
 
@@ -15,19 +15,19 @@ export const Colors = {
   textMuted: 'rgba(14, 32, 37, 0.55)',
 
   // Modusfarger innenfor samme palett
-  calmGlow: '#46917c',
+  calmGlow: '#2f6f61',
   focusGlow: '#1e495d',
-  energyGlow: '#46917c',
-  energyGold: '#46917c',
+  energyGlow: '#2f6f61',
+  energyGold: '#2f6f61',
   sleepGlow: '#1e495d',
-  balanceGlow: '#46917c',
+  balanceGlow: '#2f6f61',
   destressGlow: '#1e495d',
   triangleGlow: '#1e495d',
-  slowGlow: '#46917c',
+  slowGlow: '#2f6f61',
   deepSighGlow: '#1e495d',
-  stretchGlow: '#46917c',
+  stretchGlow: '#2f6f61',
 
   // System
   error: '#c0392b',
-  success: '#46917c',
+  success: '#2f6f61',
 } as const;

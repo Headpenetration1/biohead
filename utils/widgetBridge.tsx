@@ -82,7 +82,7 @@ function setupAndroidWidget(snapshot: WidgetSnapshot): void {
             />
             <widget.TextWidget
               text={recommendedLabel ? `Anbefalt: ${recommendedLabel}` : 'Åpne appen'}
-              style={{ color: '#46917c', marginTop: 6, fontSize: 14 }}
+              style={{ color: '#2f6f61', marginTop: 6, fontSize: 14 }}
             />
           </widget.FlexWidget>
         );
@@ -110,7 +110,7 @@ function setupAndroidWidget(snapshot: WidgetSnapshot): void {
           <widget.TextWidget text="Biohead" style={{ color: '#0e2025', fontSize: 18, fontWeight: '700' }} />
           <widget.TextWidget
             text={recommendedLabel ? `Anbefalt: ${recommendedLabel}` : 'Pusteøvelse nå'}
-            style={{ color: '#46917c', marginTop: 6, fontSize: 14 }}
+            style={{ color: '#2f6f61', marginTop: 6, fontSize: 14 }}
           />
         </widget.FlexWidget>
       ),

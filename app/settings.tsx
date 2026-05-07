@@ -13,6 +13,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
+import { Volume2 } from 'lucide-react-native';
 import { Colors } from '@/constants/colors';
 import { Typography } from '@/constants/typography';
 import { useAppContext } from '@/context/AppContext';
@@ -223,7 +224,10 @@ export default function SettingsScreen() {
       <View style={styles.card}>
         <Pressable onPress={() => router.push('/lydmikser')} style={styles.linkRow}>
           <View style={styles.rowText}>
-            <Text style={styles.rowTitle}>🔊 Åpne Lydmikser</Text>
+            <View style={styles.rowTitleWithIcon}>
+              <Volume2 size={17} color={Colors.textPrimary} strokeWidth={1.8} />
+              <Text style={styles.rowTitle}>Åpne Lydmikser</Text>
+            </View>
             <Text style={styles.rowSub}>Velg modus, forhåndslytt og lagre mikser</Text>
           </View>
           <Text style={styles.linkArrow}>›</Text>
@@ -492,6 +496,11 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.bold,
     fontSize: Typography.sizes.base,
     color: Colors.textPrimary,
+  },
+  rowTitleWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   rowSub: {
     fontFamily: Typography.fontFamily.regular,

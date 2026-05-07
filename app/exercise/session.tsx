@@ -22,7 +22,7 @@ import { useAppContext } from '@/context/AppContext';
 import { useBreathingEngine } from '@/hooks/useBreathingEngine';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useBreathAudio } from '@/hooks/useBreathAudio';
-import { formatTime } from '@/utils/formatTime';
+import { formatDurationShort, formatTime } from '@/utils/formatTime';
 import { logMindfulSessionIfEnabled } from '@/utils/appleHealthMindful';
 import BreathingCircle from '@/components/BreathingCircle';
 import StreakBadge from '@/components/StreakBadge';
@@ -266,7 +266,7 @@ export default function SessionScreen() {
           entering={FadeInDown.delay(500).duration(500).springify()}
           style={styles.completeSummary}
         >
-          Du fullførte {totalDuration >= 60 ? `${Math.floor(totalDuration / 60)} minutt${totalDuration >= 120 ? 'er' : ''}` : `${totalDuration} sekunder`}{'\n'}med {exercise.title}-øvelsen
+          Du fullførte {formatDurationShort(totalDuration)}{'\n'}med {exercise.title}-øvelsen
         </Animated.Text>
 
         <Animated.View entering={BounceIn.delay(600).duration(500)}>

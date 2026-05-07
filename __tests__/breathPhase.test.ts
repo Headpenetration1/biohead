@@ -53,7 +53,7 @@ describe('computePhaseSnapshot', () => {
     expect(computePhaseSnapshot(triangle, 10).phase).toBe('hold');
     expect(computePhaseSnapshot(triangle, 11).phase).toBe('exhale');
     expect(computePhaseSnapshot(triangle, 18).phase).toBe('exhale');
-    // Cycle length = 19 – after 19s we are back at inhale.
+    // Cycle length = 19 s, then we are back at inhale.
     expect(computePhaseSnapshot(triangle, 19).phase).toBe('inhale');
   });
 

@@ -50,7 +50,7 @@ export default function BreathingCircle({
 
   // Animert indre sirkel (Inner Core)
   const animatedInnerProps = useAnimatedProps(() => ({
-    r: CIRCLE_R * circleScale.value * 0.75, // Slightly larger base
+    r: CIRCLE_R * circleScale.value * 0.75,
     opacity: 0.15 + glowOpacity.value * 0.2,
   }));
 
@@ -62,7 +62,7 @@ export default function BreathingCircle({
 
   // Animert glow
   const glowStyle = useAnimatedStyle(() => ({
-    width: SIZE * circleScale.value * 1.5, // Even bigger glow spread
+    width: SIZE * circleScale.value * 1.5,
     height: SIZE * circleScale.value * 1.5,
     opacity: glowOpacity.value * 0.6,
   }));

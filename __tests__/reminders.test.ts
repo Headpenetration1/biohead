@@ -1,6 +1,3 @@
-import { getAdaptiveReminderTimes } from '@/utils/reminders';
-import type { SessionRecord } from '@/utils/storage';
-
 jest.mock('@react-native-async-storage/async-storage', () => ({
   __esModule: true,
   default: {
@@ -9,6 +6,27 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
     removeItem: jest.fn(async () => undefined),
   },
 }));
+
+jest.mock('expo-notifications', () => ({
+  AndroidImportance: { DEFAULT: 3 },
+  SchedulableTriggerInputTypes: {
+    DAILY: 'daily',
+    DATE: 'date',
+    WEEKLY: 'weekly',
+  },
+  addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+  cancelScheduledNotificationAsync: jest.fn(async () => undefined),
+  getAllScheduledNotificationsAsync: jest.fn(async () => []),
+  getPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
+  requestPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
+  scheduleNotificationAsync: jest.fn(async () => 'notification-id'),
+  setNotificationCategoryAsync: jest.fn(async () => undefined),
+  setNotificationChannelAsync: jest.fn(async () => undefined),
+  setNotificationHandler: jest.fn(),
+}));
+
+import { getAdaptiveReminderTimes } from '@/utils/reminders';
+import type { SessionRecord } from '@/utils/storage';
 
 describe('adaptive reminder times', () => {
   it('keeps fallback for low data volume', () => {
