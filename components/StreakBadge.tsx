@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Animated, { FadeIn, BounceIn } from 'react-native-reanimated';
+import { Flame } from 'lucide-react-native';
 import { Colors } from '@/constants/colors';
 import { Typography } from '@/constants/typography';
 
@@ -20,7 +21,12 @@ export default function StreakBadge({ count, large = false }: StreakBadgeProps) 
         large && styles.badgeLarge,
       ]}
     >
-      <Text style={large ? styles.iconLarge : styles.icon}>🔥</Text>
+      <Flame
+        size={large ? 20 : 14}
+        color={Colors.energyGold}
+        fill={Colors.energyGold}
+        strokeWidth={2}
+      />
       <Text style={[styles.text, large && styles.textLarge]}>
         {count} {count === 1 ? 'dag' : 'dager'}
         {large ? ' i rad!' : ''}
@@ -50,12 +56,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 24,
     gap: 8,
-  },
-  icon: {
-    fontSize: 14,
-  },
-  iconLarge: {
-    fontSize: 20,
   },
   text: {
     fontFamily: Typography.fontFamily.semibold,
