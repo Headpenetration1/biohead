@@ -1,6 +1,5 @@
 import React, { Component, ErrorInfo } from 'react';
 import { View, Text, Pressable, StyleSheet, Linking } from 'react-native';
-import * as Sentry from '@sentry/react-native';
 import { Colors } from '@/constants/colors';
 import { Typography } from '@/constants/typography';
 import { saveCrashReport } from '@/utils/crashReport';
@@ -28,9 +27,6 @@ export default class ErrorBoundary extends Component<Props, State> {
       console.error('ErrorBoundary caught:', error, info);
     }
     void saveCrashReport(error, info.componentStack ?? undefined);
-    Sentry.captureException(error, {
-      extra: { componentStack: info.componentStack },
-    });
   }
 
   handleReset = () => {

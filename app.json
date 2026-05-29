@@ -39,7 +39,6 @@
       "expo-font",
       "expo-av",
       "expo-notifications",
-      "@sentry/react-native",
       [
         "expo-splash-screen",
         {
@@ -50,24 +49,6 @@
             "image": "./assets/splash-brand-dark.png",
             "backgroundColor": "#0e2025"
           }
-        }
-      ],
-      [
-        "expo-widgets",
-        {
-          "groupIdentifier": "group.no.biohead.app",
-          "widgets": [
-            {
-              "name": "BioheadHomeWidget",
-              "supportedFamilies": [
-                "systemSmall",
-                "systemMedium"
-              ],
-              "displayName": "Biohead",
-              "description": "Hurtigstart pusteøvelse",
-              "contentMarginsDisabled": false
-            }
-          ]
         }
       ],
       [

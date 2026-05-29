@@ -4,8 +4,8 @@
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
     "test": "jest"
   },
@@ -13,7 +13,6 @@
     "@expo-google-fonts/comfortaa": "^0.2.3",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/slider": "5.0.1",
-    "@sentry/react-native": "~7.2.0",
     "expo": "~54.0.34",
     "expo-av": "~16.0.8",
     "expo-constants": "~18.0.13",
@@ -26,7 +25,6 @@
     "expo-router": "~6.0.23",
     "expo-splash-screen": "~31.0.13",
     "expo-status-bar": "~3.0.9",
-    "expo-widgets": "^55.0.8",
     "lucide-react-native": "^0.577.0",
     "promise": "^8.3.0",
     "react": "19.1.0",
@@ -74,7 +72,6 @@
     "doctor": {
       "reactNativeDirectoryCheck": {
         "exclude": [
-          "expo-widgets",
           "react-native-health"
         ]
       }

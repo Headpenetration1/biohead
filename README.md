@@ -14,7 +14,7 @@ En minimalistisk mobilapp for guidede pusteøvelser og mentale «reset»-økter,
 - **Innstillinger**: haptikk, redusert bevegelse, daglige påminnelser (med «hopp over i dag», utsett 30 min, adaptiv tid og stille helg), lagrede øktoppsett, nullstill data
 - **Widgets**: iOS og Android hjemskjerm-widget for hurtigstart av anbefalt øvelse
 - **Tilgjengelighet**: skjermleser-labels, live-regioner på pustesirkelen, `hitSlop` og `accessibilityState` på interaktive elementer
-- **Feilrapportering**: **Sentry** (valgfritt, via `EXPO_PUBLIC_SENTRY_DSN`) + lokal lagring + support-lenke på feilskjerm
+- **Feilhåndtering**: lokal lagring av feil + support-lenke på feilskjerm
 - **Apple Helse (iOS)**: valgfri logging av **mindful minutes** etter fullførte økter (krever bygget app med HealthKit, ikke Expo Go)
 - **Automatisk pause**: aktiv økt pauses når appen går i bakgrunn slik at lyd/visuell tilstand ikke driver fra hverandre
 
@@ -23,7 +23,7 @@ En minimalistisk mobilapp for guidede pusteøvelser og mentale «reset»-økter,
 - **Expo SDK 54** · **TypeScript** (strict)
 - **expo-router** · **react-native-reanimated** · **react-native-svg**
 - **AsyncStorage** · **expo-haptics** · **expo-av** (lyd) · **expo-notifications** (påminnelse) · **expo-keep-awake** (økt)
-- **@sentry/react-native** · **react-native-health** (kun iOS / HealthKit)
+- **react-native-health** (kun iOS / HealthKit)
 
 ## Kom i gang
 
@@ -47,13 +47,6 @@ npx tsc --noEmit
 
 Testdekningen inkluderer reducer-logikk, streak-regler, adaptive påminnelser, historikk-insights, lagrings-serialisering, fasebereging og lydpolicy.
 
-### Sentry (valgfritt)
-
-1. Opprett prosjekt på [sentry.io](https://sentry.io) og kopier **DSN** for React Native.
-2. Legg `EXPO_PUBLIC_SENTRY_DSN=<din-dsn>` i `.env` (se [.env.example](.env.example)).
-3. For EAS-bygg: legg samme variabel i **EAS Secrets** eller `eas.json` env for produksjon.
-4. Plugin `@sentry/react-native` i [app.json](app.json) støtter kildekart ved bygg; følg [Sentry Expo-dokumentasjon](https://docs.sentry.io/platforms/react-native/manual-setup/expo/) for org/prosjekt og auth token ved behov.
-
 ### Apple Helse
 
 - Slå på under **Innstillinger → Integrasjoner → Apple Helse** (kun iOS).
@@ -74,7 +67,7 @@ Se [eas.json](eas.json) for profiler (`development`, `preview`, `production`).
 
 - [ ] Apple Developer-konto, signeringsprofiler via EAS
 - [ ] App Store Connect: beskrivelse, nøkkelord, skjermbilder (påkrevd størrelser)
-- [ ] **App Privacy**: lokale data + ev. **Sentry** (krasj) + ev. **Apple Helse** (mindful minutes) – besvar i tråd med det du faktisk bruker
+- [ ] **App Privacy**: lokale data + ev. **Apple Helse** (mindful minutes) – besvar i tråd med det du faktisk bruker
 - [ ] Aldersanbefaling og support-URL / personvern (om aktuelt)
 - [ ] TestFlight-runde før App Review
 
@@ -109,7 +102,6 @@ biohead/
 ├── context/AppContext.tsx
 ├── hooks/
 ├── utils/
-│   ├── initSentry.ts          # valgfri Sentry-init
 │   └── appleHealthMindful.ts  # iOS mindful minutes → Health
 └── __tests__/
 ```

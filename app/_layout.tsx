@@ -1,5 +1,3 @@
-import { initSentry } from '@/utils/initSentry';
-import * as Sentry from '@sentry/react-native';
 import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -15,8 +13,6 @@ import { AppProvider } from '@/context/AppContext';
 import { Colors } from '@/constants/colors';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { initReminderActions } from '@/utils/reminders';
-
-initSentry();
 
 SplashScreen.preventAutoHideAsync();
 
@@ -74,4 +70,4 @@ function RootLayout() {
   );
 }
 
-export default Sentry.wrap(RootLayout);
+export default RootLayout;

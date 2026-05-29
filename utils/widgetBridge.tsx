@@ -9,7 +9,6 @@ function exerciseTitle(id: string | undefined): string | undefined {
   return exercises.find((e) => e.id === id)?.title;
 }
 
-let iosWidget: { updateSnapshot: (props: WidgetSnapshot) => void } | null = null;
 let androidRegistered = false;
 // The Android task handler is registered exactly once, so it must read the
 // latest snapshot via this module-level ref instead of capturing one in
@@ -24,32 +23,6 @@ function getDeepLink(snapshot: WidgetSnapshot): string {
   const exerciseId = snapshot.recommendedExerciseId ?? snapshot.lastSessionExerciseId;
   if (exerciseId) return `biohead://exercise/${exerciseId}`;
   return 'biohead://';
-}
-
-function setupIosWidget(): void {
-  if (Platform.OS !== 'ios') return;
-  if (iosWidget) return;
-  try {
-    // Dynamic require keeps Android/web from evaluating iOS-only widget code paths.
-    const widgets = require('expo-widgets') as typeof import('expo-widgets');
-    const swiftUI = require('@expo/ui/swift-ui') as typeof import('@expo/ui/swift-ui');
-    iosWidget = widgets.createWidget<WidgetSnapshot>('BioheadHomeWidget', (props) => {
-      'widget';
-      const primary = exerciseTitle(props.recommendedExerciseId) ?? 'Åpne Biohead';
-      const secondary = props.lastSessionExerciseId
-        ? `Sist brukt: ${exerciseTitle(props.lastSessionExerciseId) ?? props.lastSessionExerciseId}`
-        : 'Pusteøvelse nå';
-      return (
-        <swiftUI.VStack spacing={6}>
-          <swiftUI.Text>Biohead</swiftUI.Text>
-          <swiftUI.Text>{primary}</swiftUI.Text>
-          <swiftUI.Text>{secondary}</swiftUI.Text>
-        </swiftUI.VStack>
-      );
-    });
-  } catch {
-    iosWidget = null;
-  }
 }
 
 function setupAndroidWidget(snapshot: WidgetSnapshot): void {
@@ -122,13 +95,7 @@ function setupAndroidWidget(snapshot: WidgetSnapshot): void {
 
 export function syncWidgetSnapshot(snapshot: WidgetSnapshot): void {
   if (isExpoGo) return;
-  setupIosWidget();
-  if (iosWidget) {
-    try {
-      iosWidget.updateSnapshot(snapshot);
-    } catch {
-      // ignore
-    }
-  }
+  // iOS home-screen widget is deferred until the app moves to Expo SDK 55
+  // (expo-widgets has no SDK 54 release). Android widget below is unaffected.
   setupAndroidWidget(snapshot);
 }
