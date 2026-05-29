@@ -7,7 +7,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon-app.png",
     "scheme": "biohead",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "userInterfaceStyle": "light",
     "assetBundlePatterns": [
       "assets/**/*"
@@ -15,7 +15,6 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "no.biohead.app",
-      "buildNumber": "1",
       "icon": "./assets/icon-app.png",
       "infoPlist": {
         "NSHealthShareUsageDescription": "Biohead kan bruke Helse for å synkronisere mindful minutes når du velger det.",
