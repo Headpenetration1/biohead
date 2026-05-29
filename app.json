@@ -49,11 +49,7 @@
         {
           "image": "./assets/splash-brand-light.png",
           "backgroundColor": "#FFF9ED",
-          "resizeMode": "contain",
-          "dark": {
-            "image": "./assets/splash-brand-dark.png",
-            "backgroundColor": "#0e2025"
-          }
+          "resizeMode": "contain"
         }
       ],
       [
