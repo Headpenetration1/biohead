@@ -37,7 +37,12 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-av",
+      [
+        "expo-av",
+        {
+          "microphonePermission": false
+        }
+      ],
       "expo-notifications",
       [
         "expo-splash-screen",
