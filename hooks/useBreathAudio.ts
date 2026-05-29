@@ -16,6 +16,7 @@ import {
   unloadAmbientSounds,
 } from '@/utils/ambientAudio';
 import {
+  activeAmbientTracks,
   areCuesEnabled,
   effectiveCueVolume,
   isAmbientEnabled,
@@ -118,7 +119,11 @@ export function useBreathAudio(
       await ensureAudioMode();
       if (cancelled) return;
       try {
-        await ensureAmbientSounds(ambientRefs.current, (_id, status) => handleUnexpectedAudioStop(status));
+        await ensureAmbientSounds(
+          ambientRefs.current,
+          activeAmbientTracks(ambientMix),
+          (_id, status) => handleUnexpectedAudioStop(status)
+        );
         if (cancelled || generation !== ambientGenerationRef.current) return;
         await applyAmbientMix(ambientRefs.current, ambientMix);
         if (cancelled || generation !== ambientGenerationRef.current) return;

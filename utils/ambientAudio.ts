@@ -39,11 +39,36 @@ export async function fadeSoundVolume(
   }
 }
 
+/**
+ * Reconcile the loaded sounds with the set of tracks that should be audible.
+ * Tracks not in `active` are stopped and unloaded so we never keep idle decoders
+ * alive on silent soundscapes; missing active tracks are loaded silent (volume 0)
+ * and faded to their target by applyAmbientMix.
+ */
 export async function ensureAmbientSounds(
   refs: AmbientSoundMap,
+  active: AmbientSoundscape[],
   onStatus?: (id: AmbientSoundscape, status: AVPlaybackStatus) => void
 ): Promise<void> {
+  const activeSet = new Set(active);
+
   for (const id of AMBIENT_SOUNDSCAPE_IDS) {
+    const sound = refs[id];
+    if (!sound || activeSet.has(id)) continue;
+    delete refs[id];
+    try {
+      await sound.stopAsync();
+    } catch {
+      /* ignore */
+    }
+    try {
+      await sound.unloadAsync();
+    } catch {
+      /* ignore */
+    }
+  }
+
+  for (const id of active) {
     if (refs[id]) continue;
     const { sound } = await Audio.Sound.createAsync(
       AMBIENT_SOUND_MODULES[id],

@@ -22,6 +22,7 @@ import {
   playAmbientSounds,
   unloadAmbientSounds,
 } from '@/utils/ambientAudio';
+import { activeAmbientTracks } from '@/utils/audioPolicy';
 
 export default function SoundMixerScreen() {
   const router = useRouter();
@@ -112,6 +113,11 @@ export default function SoundMixerScreen() {
     [isTonePreviewing, startTonePreview, updatePreferences]
   );
 
+  const previewActiveKey = activeAmbientTracks(state.ambientMix).join(',');
+
+  // Structural: load the tracks that are audible / unload the silent ones, then
+  // play. Only re-runs when the *set* of audible tracks changes — not on every
+  // volume nudge (those are handled by the live-volume effect below).
   useEffect(() => {
     let cancelled = false;
     const generation = ++previewGenerationRef.current;
@@ -124,7 +130,7 @@ export default function SoundMixerScreen() {
       try {
         await ensureAudioMode();
         if (cancelled) return;
-        await ensureAmbientSounds(previewRefs.current);
+        await ensureAmbientSounds(previewRefs.current, activeAmbientTracks(state.ambientMix));
         if (cancelled || generation !== previewGenerationRef.current) return;
         await applyAmbientMix(previewRefs.current, state.ambientMix);
         if (cancelled || generation !== previewGenerationRef.current) return;
@@ -141,7 +147,15 @@ export default function SoundMixerScreen() {
     return () => {
       cancelled = true;
     };
-  }, [isPreviewing, state.ambientMix, stopPreview]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPreviewing, previewActiveKey, stopPreview]);
+
+  // Live volume: while previewing, reflect slider changes instantly without
+  // rebuilding the sound graph.
+  useEffect(() => {
+    if (!isPreviewing) return;
+    void applyAmbientMix(previewRefs.current, state.ambientMix, false).catch(() => {});
+  }, [isPreviewing, state.ambientMix]);
 
   useEffect(() => {
     return () => {
@@ -450,30 +464,21 @@ export default function SoundMixerScreen() {
             const pct = Math.round(level * 100);
             return (
               <View key={`mix-${opt.id}`} style={styles.mixRow}>
-                <View style={styles.mixInfo}>
+                <View style={styles.mixInfoRow}>
                   <Text style={styles.mixTitle}>{opt.label}</Text>
                   <Text style={styles.mixSub}>{pct}%</Text>
                 </View>
-                <View style={styles.mixControls}>
-                  <Pressable
-                    onPress={() => setAmbientLevel(opt.id, level - 0.2)}
-                    style={styles.mixBtn}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Reduser ${opt.label}`}
-                    hitSlop={6}
-                  >
-                    <Text style={styles.mixBtnText}>−</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => setAmbientLevel(opt.id, level + 0.2)}
-                    style={styles.mixBtn}
-                    accessibilityRole="button"
-                    accessibilityLabel={`\u00d8k ${opt.label}`}
-                    hitSlop={6}
-                  >
-                    <Text style={styles.mixBtnText}>+</Text>
-                  </Pressable>
-                </View>
+                <Slider
+                  value={level}
+                  minimumValue={0}
+                  maximumValue={1}
+                  step={0.01}
+                  minimumTrackTintColor={Colors.greenAccent}
+                  maximumTrackTintColor="rgba(14,32,37,0.12)"
+                  thumbTintColor={Colors.greenAccent}
+                  onValueChange={(value) => setAmbientLevel(opt.id, value)}
+                  accessibilityLabel={`${opt.label} volum`}
+                />
               </View>
             );
           })}
@@ -707,18 +712,19 @@ const styles = StyleSheet.create({
   },
   mixList: { paddingHorizontal: 16, paddingBottom: 14, gap: 10 },
   mixRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    paddingVertical: 10,
+    gap: 2,
+    paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(14,32,37,0.08)',
     backgroundColor: 'rgba(14,32,37,0.04)',
   },
-  mixInfo: { flex: 1 },
+  mixInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   mixTitle: {
     fontFamily: Typography.fontFamily.bold,
     fontSize: Typography.sizes.sm,
@@ -730,7 +736,6 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     marginTop: 2,
   },
-  mixControls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   mixBtn: {
     width: 34,
     height: 34,
@@ -746,22 +751,6 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.lg,
     color: Colors.textPrimary,
     marginTop: -1,
-  },
-  mixTestBtn: {
-    borderRadius: 9,
-    borderWidth: 1,
-    borderColor: `${Colors.greenAccent}66`,
-    backgroundColor: `${Colors.greenAccent}18`,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-  },
-  mixTestBtnDisabled: {
-    opacity: 0.6,
-  },
-  mixTestBtnText: {
-    fontFamily: Typography.fontFamily.semibold,
-    fontSize: Typography.sizes.sm,
-    color: Colors.greenAccent,
   },
   saveMixBtn: {
     borderRadius: 10,
