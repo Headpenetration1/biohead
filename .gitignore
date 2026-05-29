@@ -6,7 +6,9 @@ node_modules/
 dist/
 web-build/
 
-# Native
+# Native (managed workflow — EAS prebuilds these from app.json)
+/ios/
+/android/
 *.orig.*
 *.jks
 *.p8

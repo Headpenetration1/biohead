@@ -12,7 +12,7 @@ En minimalistisk mobilapp for guidede pusteøvelser og mentale «reset»-økter,
 - **Favoritter**: egen seksjon på forsiden + hjerte på kort og øvelsesside
 - **Lydmikser**: signaler ved fasebytte, ambient-natur (vind / fugler / skog / regn / bølger) med egne volumnivåer og lagrede mikser, valgfri tonegenerator
 - **Innstillinger**: haptikk, redusert bevegelse, daglige påminnelser (med «hopp over i dag», utsett 30 min, adaptiv tid og stille helg), lagrede øktoppsett, nullstill data
-- **Widgets**: iOS og Android hjemskjerm-widget for hurtigstart av anbefalt øvelse
+- **Widget**: Android hjemskjerm-widget for hurtigstart av anbefalt øvelse (iOS-widget planlagt til senere versjon)
 - **Tilgjengelighet**: skjermleser-labels, live-regioner på pustesirkelen, `hitSlop` og `accessibilityState` på interaktive elementer
 - **Feilhåndtering**: lokal lagring av feil + support-lenke på feilskjerm
 - **Apple Helse (iOS)**: valgfri logging av **mindful minutes** etter fullførte økter (krever bygget app med HealthKit, ikke Expo Go)
